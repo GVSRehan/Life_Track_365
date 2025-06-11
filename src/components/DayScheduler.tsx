@@ -23,6 +23,7 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
   const dateString = selectedDate.toISOString().split('T')[0];
   const today = new Date().toISOString().split('T')[0];
   const isPastDate = dateString < today;
+  const isToday = dateString === today;
 
   // Load tasks for the selected date
   useEffect(() => {
@@ -147,6 +148,22 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
     });
   };
 
+  // Get current time for blocking past time slots on today
+  const getCurrentTime = () => {
+    const now = new Date();
+    return {
+      hour: now.getHours(),
+      minute: now.getMinutes()
+    };
+  };
+
+  // Check if a time slot is in the past for today
+  const isTimeSlotPast = (hour: number) => {
+    if (!isToday) return false;
+    const currentTime = getCurrentTime();
+    return hour <= currentTime.hour;
+  };
+
   // Generate 24-hour grid
   const hours = Array.from({ length: 24 }, (_, i) => i);
 
@@ -162,6 +179,7 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
             <p className="text-muted-foreground mt-1">
               {formatDate(selectedDate)}
               {isPastDate && <span className="ml-2 text-sm bg-muted px-2 py-1 rounded">Past Date</span>}
+              {isToday && <span className="ml-2 text-sm bg-primary/10 text-primary px-2 py-1 rounded">Today</span>}
             </p>
           </div>
           <Button 
@@ -182,37 +200,59 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
             <p className="text-muted-foreground">This is a past date. You can view tasks but cannot add new ones.</p>
           </div>
         )}
+        {isToday && (
+          <div className="mb-4 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+            <p className="text-primary text-sm">
+              You can only add tasks for future time slots. Past time slots are disabled.
+            </p>
+          </div>
+        )}
         <div className="space-y-1">
-          {hours.map(hour => (
-            <div key={hour} className="flex">
-              {/* Time Label */}
-              <div className="w-20 flex-shrink-0 text-sm text-muted-foreground py-4 font-medium">
-                {hour.toString().padStart(2, '0')}:00
-              </div>
-              
-              {/* Task Area */}
-              <div className="flex-1 min-h-[60px] border-l border-border pl-6 relative">
-                {tasks
-                  .filter(task => {
-                    const startHour = parseInt(task.startTime.split(':')[0]);
-                    return startHour === hour;
-                  })
-                  .map(task => (
-                    <TaskBlock
-                      key={task.id}
-                      task={task}
-                      onEdit={() => !isPastDate && setEditingTask(task)}
-                      onDelete={() => !isPastDate && deleteTask(task.id)}
-                      disabled={isPastDate}
-                    />
-                  ))
-                }
+          {hours.map(hour => {
+            const isPastTimeSlot = isTimeSlotPast(hour);
+            return (
+              <div key={hour} className="flex">
+                {/* Time Label */}
+                <div className="w-20 flex-shrink-0 text-sm text-muted-foreground py-4 font-medium">
+                  {hour.toString().padStart(2, '0')}:00
+                </div>
                 
-                {/* Hour line */}
-                <div className="absolute left-0 top-0 w-full h-px bg-border opacity-30" />
+                {/* Task Area */}
+                <div className={cn(
+                  "flex-1 min-h-[60px] border-l border-border pl-6 relative",
+                  isPastTimeSlot && isToday && "bg-muted/30 opacity-60"
+                )}>
+                  {tasks
+                    .filter(task => {
+                      const startHour = parseInt(task.startTime.split(':')[0]);
+                      return startHour === hour;
+                    })
+                    .map(task => (
+                      <TaskBlock
+                        key={task.id}
+                        task={task}
+                        onEdit={() => !isPastDate && !isPastTimeSlot && setEditingTask(task)}
+                        onDelete={() => !isPastDate && !isPastTimeSlot && deleteTask(task.id)}
+                        disabled={isPastDate || isPastTimeSlot}
+                      />
+                    ))
+                  }
+                  
+                  {/* Hour line */}
+                  <div className="absolute left-0 top-0 w-full h-px bg-border opacity-30" />
+                  
+                  {/* Past time indicator for today */}
+                  {isPastTimeSlot && isToday && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-xs text-muted-foreground bg-background px-2 py-1 rounded border">
+                        Past Time
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -226,6 +266,7 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
             setShowTaskForm(false);
             setEditingTask(null);
           }}
+          isToday={isToday}
         />
       )}
 
