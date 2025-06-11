@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { Task, TASK_CATEGORIES, TaskCategory } from '@/types/task';
 import TaskForm from '@/components/TaskForm';
 import TaskBlock from '@/components/TaskBlock';
+import TaskNotification from '@/components/TaskNotification';
 
 interface DaySchedulerProps {
   selectedDate: Date;
@@ -15,6 +16,10 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [activeNotification, setActiveNotification] = useState<{
+    task: Task;
+    type: 'before' | 'after';
+  } | null>(null);
 
   const dateString = selectedDate.toISOString().split('T')[0];
 
@@ -76,6 +81,14 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
     saveTasks(updatedTasks);
   };
 
+  const handleTaskAcknowledge = (taskId: string, response: 'going' | 'not-going') => {
+    const updatedTasks = tasks.map(task => 
+      task.id === taskId ? { ...task, acknowledged: response } : task
+    );
+    saveTasks(updatedTasks);
+    setActiveNotification(null);
+  };
+
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-US', { 
       weekday: 'long', 
@@ -117,12 +130,12 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
           {hours.map(hour => (
             <div key={hour} className="flex">
               {/* Time Label */}
-              <div className="w-16 flex-shrink-0 text-sm text-muted-foreground py-2">
+              <div className="w-20 flex-shrink-0 text-sm text-muted-foreground py-4 font-medium">
                 {hour.toString().padStart(2, '0')}:00
               </div>
               
               {/* Task Area */}
-              <div className="flex-1 min-h-[60px] border-l border-border pl-4 relative">
+              <div className="flex-1 min-h-[60px] border-l border-border pl-6 relative">
                 {tasks
                   .filter(task => {
                     const startHour = parseInt(task.startTime.split(':')[0]);
@@ -137,6 +150,9 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
                     />
                   ))
                 }
+                
+                {/* Hour line */}
+                <div className="absolute left-0 top-0 w-full h-px bg-border opacity-30" />
               </div>
             </div>
           ))}
@@ -153,6 +169,16 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
             setShowTaskForm(false);
             setEditingTask(null);
           }}
+        />
+      )}
+
+      {/* Task Notification */}
+      {activeNotification && (
+        <TaskNotification
+          task={activeNotification.task}
+          type={activeNotification.type}
+          onAcknowledge={handleTaskAcknowledge}
+          onClose={() => setActiveNotification(null)}
         />
       )}
     </div>

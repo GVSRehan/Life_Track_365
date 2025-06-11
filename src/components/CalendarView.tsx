@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { TASK_CATEGORIES, Task } from '@/types/task';
 
 interface CalendarViewProps {
   selectedDate: Date;
@@ -10,136 +11,169 @@ interface CalendarViewProps {
 }
 
 const CalendarView = ({ selectedDate, onDateSelect }: CalendarViewProps) => {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [viewMode, setViewMode] = useState<'month' | 'year'>('month');
+  const [currentDate, setCurrentDate] = useState(new Date(selectedDate));
 
-  const navigateMonth = (direction: 'prev' | 'next') => {
-    setCurrentDate(prev => {
-      const newDate = new Date(prev);
-      if (direction === 'prev') {
-        newDate.setMonth(prev.getMonth() - 1);
-      } else {
-        newDate.setMonth(prev.getMonth() + 1);
-      }
-      return newDate;
-    });
-  };
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
 
-  const navigateYear = (direction: 'prev' | 'next') => {
-    setCurrentDate(prev => {
-      const newDate = new Date(prev);
-      if (direction === 'prev') {
-        newDate.setFullYear(prev.getFullYear() - 1);
-      } else {
-        newDate.setFullYear(prev.getFullYear() + 1);
-      }
-      return newDate;
-    });
-  };
+  const weekDays = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
-    const startDate = new Date(firstDay);
-    startDate.setDate(startDate.getDate() - firstDay.getDay());
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = (firstDay.getDay() + 6) % 7; // Monday = 0
 
     const days = [];
-    for (let i = 0; i < 42; i++) {
-      const day = new Date(startDate);
-      day.setDate(startDate.getDate() + i);
-      days.push(day);
+    
+    // Add empty cells for days before the first day of the month
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push(null);
     }
+    
+    // Add days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      days.push(new Date(year, month, day));
+    }
+    
     return days;
   };
 
-  const isToday = (date: Date) => {
-    const today = new Date();
-    return date.toDateString() === today.toDateString();
+  const getTasksForDate = (date: Date | null) => {
+    if (!date) return [];
+    
+    const storedTasks = localStorage.getItem('lifetrack-tasks');
+    if (!storedTasks) return [];
+    
+    const allTasks: Task[] = JSON.parse(storedTasks);
+    const dateString = date.toISOString().split('T')[0];
+    return allTasks.filter(task => task.date === dateString);
   };
 
-  const isSelected = (date: Date) => {
-    return date.toDateString() === selectedDate.toDateString();
-  };
-
-  const isCurrentMonth = (date: Date) => {
-    return date.getMonth() === currentDate.getMonth();
-  };
-
-  const formatMonthYear = (date: Date) => {
-    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    const newDate = new Date(currentDate);
+    if (direction === 'prev') {
+      newDate.setMonth(newDate.getMonth() - 1);
+    } else {
+      newDate.setMonth(newDate.getMonth() + 1);
+    }
+    setCurrentDate(newDate);
   };
 
   const days = getDaysInMonth(currentDate);
-  const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const today = new Date();
+  const isToday = (date: Date | null) => {
+    if (!date) return false;
+    return date.toDateString() === today.toDateString();
+  };
+
+  const isSelected = (date: Date | null) => {
+    if (!date) return false;
+    return date.toDateString() === selectedDate.toDateString();
+  };
 
   return (
-    <div className="bg-card rounded-lg shadow-sm border p-6">
-      {/* Calendar Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigateMonth('prev')}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <h2 className="text-xl font-semibold text-foreground min-w-[200px] text-center">
-            {formatMonthYear(currentDate)}
+    <div className="bg-card rounded-lg shadow-sm border">
+      {/* Header */}
+      <div className="p-6 border-b">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-semibold text-foreground">
+            {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
           </h2>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigateMonth('next')}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigateYear('prev')}
-          >
-            -1 Year
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigateYear('next')}
-          >
-            +1 Year
-          </Button>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => navigateMonth('prev')}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => navigateMonth('next')}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-1">
-        {/* Weekday Headers */}
-        {weekdays.map(day => (
-          <div key={day} className="p-2 text-center text-sm font-medium text-muted-foreground">
-            {day}
-          </div>
-        ))}
-        
-        {/* Calendar Days */}
-        {days.map((day, index) => (
-          <button
-            key={index}
-            onClick={() => onDateSelect(day)}
-            className={cn(
-              "p-2 text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors",
-              "h-12 flex items-center justify-center",
-              !isCurrentMonth(day) && "text-muted-foreground opacity-50",
-              isToday(day) && "bg-primary text-primary-foreground font-semibold",
-              isSelected(day) && !isToday(day) && "bg-secondary text-secondary-foreground ring-2 ring-primary"
-            )}
-          >
-            {day.getDate()}
-          </button>
-        ))}
+      <div className="p-6">
+        {/* Week days header */}
+        <div className="grid grid-cols-7 gap-2 mb-4">
+          {weekDays.map(day => (
+            <div key={day} className="text-center text-sm font-medium text-muted-foreground p-2">
+              {day}
+            </div>
+          ))}
+        </div>
+
+        {/* Calendar days */}
+        <div className="grid grid-cols-7 gap-2">
+          {days.map((date, index) => {
+            if (!date) {
+              return <div key={index} className="h-24"></div>;
+            }
+
+            const tasks = getTasksForDate(date);
+            const hasActiveTasks = tasks.length > 0;
+
+            return (
+              <div
+                key={date.toISOString()}
+                className={cn(
+                  "h-24 border rounded-lg p-2 cursor-pointer transition-all hover:border-primary/50",
+                  isSelected(date) && "border-primary bg-primary/5",
+                  isToday(date) && "bg-accent",
+                  !hasActiveTasks && "hover:bg-accent/50"
+                )}
+                onClick={() => onDateSelect(date)}
+              >
+                <div className="flex flex-col h-full">
+                  <span className={cn(
+                    "text-sm font-medium",
+                    isToday(date) && "text-primary font-bold"
+                  )}>
+                    {date.getDate()}
+                  </span>
+                  
+                  {/* Task indicators */}
+                  <div className="flex-1 mt-1 space-y-1">
+                    {tasks.slice(0, 3).map((task, taskIndex) => {
+                      const category = TASK_CATEGORIES[task.category];
+                      return (
+                        <div
+                          key={taskIndex}
+                          className={cn(
+                            "w-2 h-2 rounded-full",
+                            category.color === 'text-blue-700' && "bg-blue-500",
+                            category.color === 'text-purple-700' && "bg-purple-500",
+                            category.color === 'text-green-700' && "bg-green-500",
+                            category.color === 'text-orange-700' && "bg-orange-500",
+                            category.color === 'text-red-700' && "bg-red-500",
+                            category.color === 'text-gray-700' && "bg-gray-500",
+                            category.color === 'text-amber-700' && "bg-amber-500"
+                          )}
+                        />
+                      );
+                    })}
+                    {tasks.length > 3 && (
+                      <div className="text-xs text-muted-foreground">
+                        +{tasks.length - 3}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
