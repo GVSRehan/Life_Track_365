@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -22,6 +21,8 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
   } | null>(null);
 
   const dateString = selectedDate.toISOString().split('T')[0];
+  const today = new Date().toISOString().split('T')[0];
+  const isPastDate = dateString < today;
 
   // Load tasks for the selected date
   useEffect(() => {
@@ -32,6 +33,54 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
       setTasks(dayTasks);
     }
   }, [dateString]);
+
+  // Notification system
+  useEffect(() => {
+    if (isPastDate) return; // Don't set notifications for past dates
+
+    const checkNotifications = () => {
+      const now = new Date();
+      const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+      
+      tasks.forEach(task => {
+        if (task.acknowledged) return; // Skip if already acknowledged
+
+        const [startHour, startMinute] = task.startTime.split(':').map(Number);
+        const [endHour, endMinute] = task.endTime.split(':').map(Number);
+        
+        const taskStart = new Date();
+        taskStart.setHours(startHour, startMinute, 0, 0);
+        
+        const taskEnd = new Date();
+        taskEnd.setHours(endHour, endMinute, 0, 0);
+
+        // Calculate notification times based on category
+        let beforeMinutes = 5; // default
+        if (['meditate', 'yoga', 'sleep'].includes(task.category)) {
+          beforeMinutes = 15;
+        }
+
+        const beforeNotificationTime = new Date(taskStart.getTime() - beforeMinutes * 60000);
+        const afterNotificationTime = new Date(taskEnd.getTime() + 5 * 60000); // 5 minutes after
+
+        // Check if we should show "before" notification
+        if (now >= beforeNotificationTime && now < taskStart && !activeNotification) {
+          setActiveNotification({ task, type: 'before' });
+        }
+
+        // Check if we should show "after" notification
+        if (now >= afterNotificationTime && now < new Date(taskEnd.getTime() + 10 * 60000) && !activeNotification) {
+          setActiveNotification({ task, type: 'after' });
+        }
+      });
+    };
+
+    // Check immediately and then every minute
+    checkNotifications();
+    const interval = setInterval(checkNotifications, 60000);
+
+    return () => clearInterval(interval);
+  }, [tasks, isPastDate, activeNotification]);
 
   const saveTasks = (newTasks: Task[]) => {
     const storedTasks = localStorage.getItem('lifetrack-tasks');
@@ -112,11 +161,13 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
             </h2>
             <p className="text-muted-foreground mt-1">
               {formatDate(selectedDate)}
+              {isPastDate && <span className="ml-2 text-sm bg-muted px-2 py-1 rounded">Past Date</span>}
             </p>
           </div>
           <Button 
             onClick={() => setShowTaskForm(true)}
             className="flex items-center space-x-2"
+            disabled={isPastDate}
           >
             <Plus className="h-4 w-4" />
             <span>Add Task</span>
@@ -126,6 +177,11 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
 
       {/* Schedule Grid */}
       <div className="p-6">
+        {isPastDate && (
+          <div className="mb-4 p-4 bg-muted/50 rounded-lg text-center">
+            <p className="text-muted-foreground">This is a past date. You can view tasks but cannot add new ones.</p>
+          </div>
+        )}
         <div className="space-y-1">
           {hours.map(hour => (
             <div key={hour} className="flex">
@@ -145,8 +201,9 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
                     <TaskBlock
                       key={task.id}
                       task={task}
-                      onEdit={() => setEditingTask(task)}
-                      onDelete={() => deleteTask(task.id)}
+                      onEdit={() => !isPastDate && setEditingTask(task)}
+                      onDelete={() => !isPastDate && deleteTask(task.id)}
+                      disabled={isPastDate}
                     />
                   ))
                 }
@@ -160,7 +217,7 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
       </div>
 
       {/* Task Form Modal */}
-      {(showTaskForm || editingTask) && (
+      {(showTaskForm || editingTask) && !isPastDate && (
         <TaskForm
           task={editingTask}
           date={dateString}
