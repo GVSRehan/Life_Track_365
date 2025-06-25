@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,6 +7,7 @@ import { Task, TASK_CATEGORIES, TaskCategory } from '@/types/task';
 import TaskForm from '@/components/TaskForm';
 import TaskBlock from '@/components/TaskBlock';
 import TaskNotification from '@/components/TaskNotification';
+import { getCurrentDateTime, isTimeSlotPast, formatDateForDisplay } from '@/utils/dateUtils';
 
 interface DaySchedulerProps {
   selectedDate: Date;
@@ -19,11 +21,20 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
     task: Task;
     type: 'before' | 'after';
   } | null>(null);
+  const [currentDateTime, setCurrentDateTime] = useState(getCurrentDateTime());
 
   const dateString = selectedDate.toISOString().split('T')[0];
-  const today = new Date().toISOString().split('T')[0];
-  const isPastDate = dateString < today;
-  const isToday = dateString === today;
+  const isPastDate = dateString < currentDateTime.dateString;
+  const isToday = dateString === currentDateTime.dateString;
+
+  // Update current time every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentDateTime(getCurrentDateTime());
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Load tasks for the selected date
   useEffect(() => {
@@ -158,10 +169,9 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
   };
 
   // Check if a time slot is in the past for today
-  const isTimeSlotPast = (hour: number) => {
+  const isTimeSlotPastToday = (hour: number) => {
     if (!isToday) return false;
-    const currentTime = getCurrentTime();
-    return hour <= currentTime.hour;
+    return isTimeSlotPast(hour, currentDateTime.time.hour, currentDateTime.time.minute);
   };
 
   // Generate 24-hour grid
@@ -177,9 +187,13 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
               Daily Schedule
             </h2>
             <p className="text-muted-foreground mt-1">
-              {formatDate(selectedDate)}
+              {formatDateForDisplay(selectedDate)}
               {isPastDate && <span className="ml-2 text-sm bg-muted px-2 py-1 rounded">Past Date</span>}
-              {isToday && <span className="ml-2 text-sm bg-primary/10 text-primary px-2 py-1 rounded">Today</span>}
+              {isToday && (
+                <span className="ml-2 text-sm bg-primary/10 text-primary px-2 py-1 rounded">
+                  Today - {currentDateTime.time.hour12}:{currentDateTime.time.minute.toString().padStart(2, '0')} {currentDateTime.time.ampm}
+                </span>
+              )}
             </p>
           </div>
           <Button 
@@ -203,18 +217,22 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
         {isToday && (
           <div className="mb-4 p-4 bg-primary/5 border border-primary/20 rounded-lg">
             <p className="text-primary text-sm">
-              You can only add tasks for future time slots. Past time slots are disabled.
+              Current time: {currentDateTime.time.hour12}:{currentDateTime.time.minute.toString().padStart(2, '0')} {currentDateTime.time.ampm}. 
+              You can only add tasks for future time slots.
             </p>
           </div>
         )}
         <div className="space-y-1">
           {hours.map(hour => {
-            const isPastTimeSlot = isTimeSlotPast(hour);
+            const isPastTimeSlot = isTimeSlotPastToday(hour);
             return (
               <div key={hour} className="flex">
                 {/* Time Label */}
                 <div className="w-20 flex-shrink-0 text-sm text-muted-foreground py-4 font-medium">
                   {hour.toString().padStart(2, '0')}:00
+                  <div className="text-xs opacity-60">
+                    {hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`}
+                  </div>
                 </div>
                 
                 {/* Task Area */}

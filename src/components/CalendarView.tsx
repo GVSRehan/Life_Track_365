@@ -1,9 +1,10 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { TASK_CATEGORIES, Task } from '@/types/task';
+import { getCurrentDateTime } from '@/utils/dateUtils';
 
 interface CalendarViewProps {
   selectedDate: Date;
@@ -12,6 +13,16 @@ interface CalendarViewProps {
 
 const CalendarView = ({ selectedDate, onDateSelect }: CalendarViewProps) => {
   const [currentDate, setCurrentDate] = useState(new Date(selectedDate));
+  const [currentDateTime, setCurrentDateTime] = useState(getCurrentDateTime());
+
+  // Update current time every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentDateTime(getCurrentDateTime());
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -65,7 +76,8 @@ const CalendarView = ({ selectedDate, onDateSelect }: CalendarViewProps) => {
   };
 
   const days = getDaysInMonth(currentDate);
-  const today = new Date();
+  const today = currentDateTime.date;
+  
   const isToday = (date: Date | null) => {
     if (!date) return false;
     return date.toDateString() === today.toDateString();
@@ -81,9 +93,14 @@ const CalendarView = ({ selectedDate, onDateSelect }: CalendarViewProps) => {
       {/* Header */}
       <div className="p-6 border-b">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-semibold text-foreground">
-            {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
-          </h2>
+          <div>
+            <h2 className="text-2xl font-semibold text-foreground">
+              {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Today: {today.toLocaleDateString()} - {currentDateTime.time.hour12}:{currentDateTime.time.minute.toString().padStart(2, '0')} {currentDateTime.time.ampm}
+            </p>
+          </div>
           <div className="flex items-center space-x-2">
             <Button
               variant="outline"
