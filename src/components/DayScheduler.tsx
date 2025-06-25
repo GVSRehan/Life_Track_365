@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -159,17 +158,9 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
     });
   };
 
-  // Get current time for blocking past time slots on today
-  const getCurrentTime = () => {
-    const now = new Date();
-    return {
-      hour: now.getHours(),
-      minute: now.getMinutes()
-    };
-  };
-
-  // Check if a time slot is in the past for today
+  // Check if a time slot is in the past - ONLY for today's date
   const isTimeSlotPastToday = (hour: number) => {
+    // Only apply past time logic if the selected date is today
     if (!isToday) return false;
     return isTimeSlotPast(hour, currentDateTime.time.hour, currentDateTime.time.minute);
   };
@@ -238,7 +229,7 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
                 {/* Task Area */}
                 <div className={cn(
                   "flex-1 min-h-[60px] border-l border-border pl-6 relative",
-                  isPastTimeSlot && isToday && "bg-muted/30 opacity-60"
+                  isPastTimeSlot && "bg-muted/30 opacity-60"
                 )}>
                   {tasks
                     .filter(task => {
@@ -259,8 +250,8 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
                   {/* Hour line */}
                   <div className="absolute left-0 top-0 w-full h-px bg-border opacity-30" />
                   
-                  {/* Past time indicator for today */}
-                  {isPastTimeSlot && isToday && (
+                  {/* Past time indicator - ONLY show for today */}
+                  {isPastTimeSlot && (
                     <div className="absolute inset-0 flex items-center justify-center">
                       <span className="text-xs text-muted-foreground bg-background px-2 py-1 rounded border">
                         Past Time
