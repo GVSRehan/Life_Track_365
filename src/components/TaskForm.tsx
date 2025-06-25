@@ -39,19 +39,6 @@ const TaskForm = ({ task, date, onSave, onCancel, isToday = false }: TaskFormPro
     return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
   };
 
-  // Convert 12-hour format to 24-hour format
-  const convertTo24Hour = (time12h: string) => {
-    const [time, modifier] = time12h.split(' ');
-    let [hours, minutes] = time.split(':');
-    if (hours === '12') {
-      hours = '00';
-    }
-    if (modifier === 'PM') {
-      hours = parseInt(hours, 10) + 12;
-    }
-    return `${hours.toString().padStart(2, '0')}:${minutes}`;
-  };
-
   // Get minimum time allowed (current time if today, otherwise 00:00)
   const getMinTime = () => {
     if (isToday) {
