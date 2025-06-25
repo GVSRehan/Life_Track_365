@@ -1,20 +1,23 @@
 
 import { useState } from 'react';
-import { Calendar, Clock, BarChart3, Menu } from 'lucide-react';
+import { Calendar, Clock, BarChart3, Menu, LogOut, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import CalendarView from '@/components/CalendarView';
 import DayScheduler from '@/components/DayScheduler';
 import AnalyticsDashboard from '@/components/AnalyticsDashboard';
+import { useAuth } from '@/hooks/useAuth';
 
 const Index = () => {
   const [activeView, setActiveView] = useState<'calendar' | 'scheduler' | 'analytics'>('calendar');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const { user, signOut } = useAuth();
 
   const renderActiveView = () => {
     switch (activeView) {
@@ -34,6 +37,10 @@ const Index = () => {
     { key: 'scheduler', label: 'Daily Schedule', icon: Clock },
     { key: 'analytics', label: 'Analytics', icon: BarChart3 },
   ];
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -59,6 +66,25 @@ const Index = () => {
                   <span>{item.label}</span>
                 </Button>
               ))}
+              
+              {/* User Menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <User className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem disabled>
+                    {user?.email}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             {/* Mobile Navigation */}
@@ -80,6 +106,14 @@ const Index = () => {
                       <span>{item.label}</span>
                     </DropdownMenuItem>
                   ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem disabled>
+                    {user?.email}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
