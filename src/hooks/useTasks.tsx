@@ -1,9 +1,8 @@
-
-import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Task, TaskCategory } from '@/types/task';
 import { useAuth } from './useAuth';
+import { toast } from 'sonner';
 
 export const useTasks = (date?: string) => {
   const { user } = useAuth();
@@ -43,7 +42,7 @@ export const useTasks = (date?: string) => {
     enabled: !!user
   });
 
-  // Create task mutation
+  // Create task mutation with server-side time validation
   const createTaskMutation = useMutation({
     mutationFn: async (taskData: Omit<Task, 'id' | 'createdAt'>) => {
       if (!user) throw new Error('User not authenticated');
@@ -62,11 +61,21 @@ export const useTasks = (date?: string) => {
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        // Handle the server-side time validation error
+        if (error.message.includes('Cannot add tasks in the past')) {
+          throw new Error('Cannot add tasks in the past. Please select a future time slot.');
+        }
+        throw error;
+      }
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      toast.success('Task created successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
     }
   });
 
@@ -95,6 +104,10 @@ export const useTasks = (date?: string) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      toast.success('Task updated successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
     }
   });
 
@@ -113,6 +126,10 @@ export const useTasks = (date?: string) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      toast.success('Task deleted successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
     }
   });
 
