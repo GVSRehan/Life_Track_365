@@ -14,13 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      tasks: {
+        Row: {
+          acknowledged: string | null
+          category: string
+          created_at: string
+          date: string
+          end_time: string
+          id: string
+          start_time: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          acknowledged?: string | null
+          category?: string
+          created_at?: string
+          date: string
+          end_time: string
+          id?: string
+          start_time: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          acknowledged?: string | null
+          category?: string
+          created_at?: string
+          date?: string
+          end_time?: string
+          id?: string
+          start_time?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_server_time: { Args: never; Returns: Json }
     }
     Enums: {
       [_ in never]: never
