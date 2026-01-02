@@ -43,10 +43,22 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
     type: 'before' | 'after';
   } | null>(null);
 
+  // Compare dates as strings (YYYY-MM-DD format ensures correct comparison)
   const isPastDate = dateString < currentDateTime.dateString;
   const isToday = dateString === currentDateTime.dateString;
+  const isFutureDate = dateString > currentDateTime.dateString;
   const dayStatus = isDayComplete(dateString);
   const remainingTime = isToday ? getRemainingTimeInDay() : null;
+  
+  // Debug log to help troubleshoot date issues
+  console.log('Date comparison:', {
+    selectedDate: dateString,
+    serverDate: currentDateTime.dateString,
+    isPastDate,
+    isToday,
+    isFutureDate,
+    dayStatus
+  });
 
   // Notification system
   useEffect(() => {
@@ -197,7 +209,7 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
           <Button 
             onClick={() => setShowTaskForm(true)}
             className="flex items-center space-x-2"
-            disabled={isPastDate || dayStatus.isComplete || isCreating}
+            disabled={isPastDate || (isToday && dayStatus.isComplete) || isCreating}
           >
             <Plus className="h-4 w-4" />
             <span>Add Task</span>
@@ -207,8 +219,18 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
 
       {/* Schedule Grid */}
       <div className="p-6">
-        {/* Day complete message */}
-        {dayStatus.isComplete && (
+        {/* Past date message - only show for dates BEFORE today */}
+        {isPastDate && (
+          <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-3">
+            <AlertCircle className="h-5 w-5 text-destructive" />
+            <p className="text-destructive text-sm font-medium">
+              This day has already passed. You cannot add new tasks.
+            </p>
+          </div>
+        )}
+        
+        {/* Today with end of day warning */}
+        {isToday && dayStatus.isComplete && (
           <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-3">
             <AlertCircle className="h-5 w-5 text-destructive" />
             <p className="text-destructive text-sm font-medium">
@@ -217,17 +239,12 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
           </div>
         )}
         
-        {isPastDate && !dayStatus.isComplete && (
-          <div className="mb-4 p-4 bg-muted/50 rounded-lg text-center">
-            <p className="text-muted-foreground">This is a past date. You can view tasks but cannot add new ones.</p>
-          </div>
-        )}
-        
+        {/* Today - can still add tasks for future time slots */}
         {isToday && !dayStatus.isComplete && (
           <div className="mb-4 p-4 bg-primary/5 border border-primary/20 rounded-lg">
             <p className="text-primary text-sm">
               Current server time: {currentDateTime.time.hour12}:{currentDateTime.time.minute.toString().padStart(2, '0')} {currentDateTime.time.ampm}. 
-              You can only add tasks for future time slots.
+              You can add tasks for future time slots only.
             </p>
           </div>
         )}
@@ -284,8 +301,8 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
         </div>
       </div>
 
-      {/* Task Form Modal */}
-      {(showTaskForm || editingTask) && !isPastDate && !dayStatus.isComplete && (
+      {/* Task Form Modal - allow for today (even if some hours passed) but not for past dates */}
+      {(showTaskForm || editingTask) && !isPastDate && !(isToday && dayStatus.isComplete) && (
         <TaskForm
           task={editingTask}
           date={dateString}

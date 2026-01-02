@@ -130,18 +130,19 @@ export const useServerTime = () => {
 
   // Check if day is complete (no more time to add tasks)
   const isDayComplete = useCallback((date: string) => {
-    const dateString = currentDateTime.dateString;
+    const serverDateString = currentDateTime.dateString;
     
-    // If it's a past date
-    if (date < dateString) {
+    // Compare dates properly (YYYY-MM-DD format)
+    // If the selected date is before today's date, it's a past date
+    if (date < serverDateString) {
       return {
         isComplete: true,
         reason: 'This day has already passed'
       };
     }
     
-    // If it's today, check if we're at the end of the day
-    if (date === dateString) {
+    // If it's today, check if we're at the very end of the day (less than 30 min left)
+    if (date === serverDateString) {
       const remaining = getRemainingTimeInDay();
       if (remaining.isEndOfDay) {
         return {
@@ -149,8 +150,14 @@ export const useServerTime = () => {
           reason: `Only ${remaining.minutes} minutes left today`
         };
       }
+      // Today is NOT complete - user can still add tasks for future time slots
+      return {
+        isComplete: false,
+        reason: null
+      };
     }
     
+    // Future date - definitely not complete
     return {
       isComplete: false,
       reason: null
