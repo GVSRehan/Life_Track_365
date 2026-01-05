@@ -8,11 +8,18 @@ interface TaskBlockProps {
   task: Task;
   onEdit: () => void;
   onDelete: () => void;
+  /** Visual state (muted/locked). Actions default to disabled when true unless overridden. */
   disabled?: boolean;
+  /** Control whether the edit action is available (defaults to !disabled). */
+  canEdit?: boolean;
+  /** Control whether the delete action is available (defaults to !disabled). */
+  canDelete?: boolean;
 }
 
-const TaskBlock = ({ task, onEdit, onDelete, disabled = false }: TaskBlockProps) => {
+const TaskBlock = ({ task, onEdit, onDelete, disabled = false, canEdit, canDelete }: TaskBlockProps) => {
   const category = TASK_CATEGORIES[task.category];
+  const allowEdit = canEdit ?? !disabled;
+  const allowDelete = canDelete ?? !disabled;
   
   const calculateDuration = () => {
     const [startHour, startMinute] = task.startTime.split(':').map(Number);
@@ -68,24 +75,28 @@ const TaskBlock = ({ task, onEdit, onDelete, disabled = false }: TaskBlockProps)
           )}
         </div>
         
-        {!disabled && (
+        {(allowEdit || allowDelete) && (
           <div className="opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onEdit}
-              className="h-8 w-8"
-            >
-              <Edit className="h-3 w-3" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onDelete}
-              className="h-8 w-8 text-destructive hover:text-destructive"
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
+            {allowEdit && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onEdit}
+                className="h-8 w-8"
+              >
+                <Edit className="h-3 w-3" />
+              </Button>
+            )}
+            {allowDelete && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onDelete}
+                className="h-8 w-8 text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            )}
           </div>
         )}
       </div>

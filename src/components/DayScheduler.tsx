@@ -6,7 +6,7 @@ import { Task, TASK_CATEGORIES, TaskCategory } from '@/types/task';
 import TaskForm from '@/components/TaskForm';
 import TaskBlock from '@/components/TaskBlock';
 import TaskNotification from '@/components/TaskNotification';
-import { isTimeSlotPast, formatDateForDisplay, toYmdDateString } from '@/utils/dateUtils';
+import { formatDateForDisplay, toYmdDateString } from '@/utils/dateUtils';
 import { useServerTime } from '@/hooks/useServerTime';
 import { useTasks } from '@/hooks/useTasks';
 import { useAuth } from '@/hooks/useAuth';
@@ -49,6 +49,7 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
   const isFutureDate = dateString > currentDateTime.dateString;
   const dayStatus = isDayComplete(dateString);
   const remainingTime = isToday ? getRemainingTimeInDay() : null;
+  const serverNowHHMM = `${currentDateTime.time.hour.toString().padStart(2, '0')}:${currentDateTime.time.minute.toString().padStart(2, '0')}`;
   
   // Debug log to help troubleshoot date issues
   console.log('Date comparison:', {
@@ -145,9 +146,10 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
   };
 
   // Check if a time slot is in the past - ONLY for today's date
+  // Keep the current hour usable (because user can still schedule later minutes within the same hour)
   const isTimeSlotPastToday = (hour: number) => {
     if (!isToday) return false;
-    return isTimeSlotPast(hour, currentDateTime.time.hour, currentDateTime.time.minute);
+    return hour < currentDateTime.time.hour;
   };
 
   // Generate 24-hour grid
@@ -272,15 +274,22 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
                       const startHour = parseInt(task.startTime.split(':')[0]);
                       return startHour === hour;
                     })
-                    .map(task => (
-                      <TaskBlock
-                        key={task.id}
-                        task={task}
-                        onEdit={() => !isPastDate && !isPastTimeSlot && setEditingTask(task)}
-                        onDelete={() => !isPastDate && !isPastTimeSlot && handleDeleteTask(task.id)}
-                        disabled={isPastDate || isPastTimeSlot}
-                      />
-                    ))
+                      .map(task => {
+                        const isPastTaskTime = isToday && task.startTime <= serverNowHHMM;
+                        const isLocked = isPastDate || isPastTaskTime;
+
+                        return (
+                          <TaskBlock
+                            key={task.id}
+                            task={task}
+                            onEdit={() => setEditingTask(task)}
+                            onDelete={() => handleDeleteTask(task.id)}
+                            disabled={isLocked}
+                            canEdit={!isPastDate && !isPastTaskTime}
+                            canDelete={!isPastDate}
+                          />
+                        );
+                      })
                   }
                   
                   {/* Hour line */}
@@ -312,7 +321,7 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
             setEditingTask(null);
           }}
           isToday={isToday}
-          currentTime={`${currentDateTime.time.hour.toString().padStart(2, '0')}:${currentDateTime.time.minute.toString().padStart(2, '0')}`}
+          currentTime={serverNowHHMM}
         />
       )}
 
