@@ -6,7 +6,7 @@ import { Task, TASK_CATEGORIES, TaskCategory } from '@/types/task';
 import TaskForm from '@/components/TaskForm';
 import TaskBlock from '@/components/TaskBlock';
 import TaskNotification from '@/components/TaskNotification';
-import { isTimeSlotPast, formatDateForDisplay } from '@/utils/dateUtils';
+import { isTimeSlotPast, formatDateForDisplay, toYmdDateString } from '@/utils/dateUtils';
 import { useServerTime } from '@/hooks/useServerTime';
 import { useTasks } from '@/hooks/useTasks';
 import { useAuth } from '@/hooks/useAuth';
@@ -25,7 +25,7 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
     isLoading: isTimeLoading 
   } = useServerTime();
   
-  const dateString = selectedDate.toISOString().split('T')[0];
+  const dateString = toYmdDateString(selectedDate);
   const { 
     tasks, 
     isLoading: isTasksLoading, 
@@ -312,6 +312,7 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
             setEditingTask(null);
           }}
           isToday={isToday}
+          currentTime={`${currentDateTime.time.hour.toString().padStart(2, '0')}:${currentDateTime.time.minute.toString().padStart(2, '0')}`}
         />
       )}
 

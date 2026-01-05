@@ -21,6 +21,8 @@ interface TaskFormProps {
   onSave: (task: Omit<Task, 'id' | 'createdAt'>) => void;
   onCancel: () => void;
   isToday?: boolean;
+  /** Server-synced current time in HH:MM (only used when isToday=true) */
+  currentTime?: string;
 }
 
 interface FormData {
@@ -30,29 +32,38 @@ interface FormData {
   category: TaskCategory;
 }
 
-const TaskForm = ({ task, date, onSave, onCancel, isToday = false }: TaskFormProps) => {
-  // Get current time for validation on today's date
+const clampTime = (time: string) => {
+  const [h, m] = time.split(':').map(Number);
+  const hh = Number.isFinite(h) ? Math.min(23, Math.max(0, h)) : 0;
+  const mm = Number.isFinite(m) ? Math.min(59, Math.max(0, m)) : 0;
+  return `${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
+};
+
+const addMinutesToHHMM = (time: string, minutes: number) => {
+  const [h, m] = clampTime(time).split(':').map(Number);
+  const base = h * 60 + m;
+  const next = Math.min(23 * 60 + 59, Math.max(0, base + minutes));
+  const hh = Math.floor(next / 60);
+  const mm = next % 60;
+  return `${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
+};
+
+const TaskForm = ({ task, date, onSave, onCancel, isToday = false, currentTime }: TaskFormProps) => {
+  // Use server-synced time for "today" validation when available
   const getCurrentTime = () => {
+    if (currentTime) return clampTime(currentTime);
     const now = new Date();
-    const hour = now.getHours();
-    const minute = now.getMinutes();
-    return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+    return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
   };
 
-  // Get minimum time allowed (current time if today, otherwise 00:00)
+  // Minimum allowed time (only for today): strictly in the future
   const getMinTime = () => {
-    if (isToday) {
-      const now = new Date();
-      const nextHour = now.getHours() + 1; // Allow from next hour onwards
-      return `${nextHour.toString().padStart(2, '0')}:00`;
-    }
-    return '00:00';
+    if (!isToday) return '00:00';
+    return addMinutesToHHMM(getCurrentTime(), 1);
   };
 
   const defaultStartTime = isToday ? getMinTime() : '09:00';
-  const defaultEndTime = isToday ? 
-    `${(parseInt(getMinTime().split(':')[0]) + 1).toString().padStart(2, '0')}:00` : 
-    '10:00';
+  const defaultEndTime = isToday ? addMinutesToHHMM(defaultStartTime, 60) : '10:00';
 
   const form = useForm<FormData>({
     defaultValues: {
@@ -175,7 +186,7 @@ const TaskForm = ({ task, date, onSave, onCancel, isToday = false }: TaskFormPro
                       <Input 
                         type="time" 
                         {...field} 
-                        min={isToday ? getMinTime() : undefined}
+                        min={form.watch('startTime')}
                       />
                     </FormControl>
                     <FormMessage />
