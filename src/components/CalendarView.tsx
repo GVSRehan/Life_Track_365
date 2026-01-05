@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { TASK_CATEGORIES, Task } from '@/types/task';
-import { getCurrentDateTime } from '@/utils/dateUtils';
+import { getCurrentDateTime, toYmdDateString } from '@/utils/dateUtils';
 
 interface CalendarViewProps {
   selectedDate: Date;
@@ -61,7 +61,7 @@ const CalendarView = ({ selectedDate, onDateSelect }: CalendarViewProps) => {
     if (!storedTasks) return [];
     
     const allTasks: Task[] = JSON.parse(storedTasks);
-    const dateString = date.toISOString().split('T')[0];
+    const dateString = toYmdDateString(date);
     return allTasks.filter(task => task.date === dateString);
   };
 

@@ -1,9 +1,15 @@
+import { format } from 'date-fns';
+
+export const toYmdDateString = (date: Date) => {
+  // Local (not UTC) YYYY-MM-DD to avoid timezone shifting (e.g. selecting tomorrow becoming "today")
+  return format(date, 'yyyy-MM-dd');
+};
 
 export const getCurrentDateTime = () => {
   const now = new Date();
   return {
     date: now,
-    dateString: now.toISOString().split('T')[0],
+    dateString: toYmdDateString(now),
     time: {
       hour: now.getHours(),
       minute: now.getMinutes(),
@@ -22,10 +28,11 @@ export const isTimeSlotPast = (hour: number, currentHour: number, currentMinute:
 };
 
 export const formatDateForDisplay = (date: Date) => {
-  return date.toLocaleDateString('en-US', { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
   });
 };
+
