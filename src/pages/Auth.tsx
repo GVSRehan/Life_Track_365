@@ -19,6 +19,8 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [showOtpVerification, setShowOtpVerification] = useState(false);
   const [pendingEmail, setPendingEmail] = useState('');
+  const [pendingPassword, setPendingPassword] = useState('');
+  const [pendingFullName, setPendingFullName] = useState('');
   const { signIn, signUp, verifyOtp, user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -52,7 +54,7 @@ const Auth = () => {
     setLoading(false);
   };
 
-  // Sign up with password, then verify with OTP
+  // Sign up by emailing OTP, then verify OTP to activate + set password
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password.trim() || !fullName.trim()) {
@@ -75,11 +77,13 @@ const Auth = () => {
         variant: 'destructive',
       });
     } else {
-      // Account created, now show OTP verification
       setPendingEmail(email);
+      setPendingPassword(password);
+      setPendingFullName(fullName);
+      setOtp('');
       setShowOtpVerification(true);
       toast({
-        title: 'Account Created!',
+        title: 'OTP sent',
         description: 'Check your email for the 6-digit verification code.',
       });
     }
@@ -87,7 +91,7 @@ const Auth = () => {
     setLoading(false);
   };
 
-  // Verify OTP after signup
+  // Verify OTP after signup (and set password)
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (otp.length !== 6) {
@@ -101,7 +105,7 @@ const Auth = () => {
 
     setLoading(true);
 
-    const { error } = await verifyOtp(pendingEmail, otp);
+    const { error } = await verifyOtp(pendingEmail, otp, pendingPassword);
 
     if (error) {
       toast({
@@ -111,12 +115,12 @@ const Auth = () => {
       });
     } else {
       toast({
-        title: 'Email Verified!',
-        description: 'Your account is now active. You can sign in.',
+        title: 'Email verified',
+        description: 'Your account is active and your password is set.',
       });
-      // Reset to login
       setShowOtpVerification(false);
       setOtp('');
+      navigate('/');
     }
 
     setLoading(false);
@@ -125,10 +129,9 @@ const Auth = () => {
   // Resend OTP for signup verification
   const handleResendOtp = async () => {
     setLoading(true);
-    
-    // Re-trigger signup to resend OTP
-    const { error } = await signUp(pendingEmail, password, fullName);
-    
+
+    const { error } = await signUp(pendingEmail, pendingPassword, pendingFullName);
+
     if (error) {
       toast({
         title: 'Error resending OTP',
@@ -137,11 +140,11 @@ const Auth = () => {
       });
     } else {
       toast({
-        title: 'OTP Resent!',
-        description: 'Check your email for the new verification code.',
+        title: 'OTP resent',
+        description: 'Check your email for the new 6-digit code.',
       });
     }
-    
+
     setLoading(false);
   };
 
@@ -149,6 +152,8 @@ const Auth = () => {
     setShowOtpVerification(false);
     setOtp('');
     setPendingEmail('');
+    setPendingPassword('');
+    setPendingFullName('');
   };
 
   return (
@@ -276,7 +281,7 @@ const Auth = () => {
                 <CardHeader>
                   <CardTitle>Sign Up</CardTitle>
                   <CardDescription>
-                    Create a new account (OTP will be sent for email verification)
+                    Create a new account (we'll email a 6-digit OTP to verify you)
                   </CardDescription>
                 </CardHeader>
                 <form onSubmit={handleSignUp}>

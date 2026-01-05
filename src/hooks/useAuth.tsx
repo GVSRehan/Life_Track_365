@@ -7,9 +7,11 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  // Starts signup by emailing a 6-digit OTP (creates user without a password initially)
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  verifyOtp: (email: string, token: string) => Promise<{ error: any }>;
+  // Verifies the emailed OTP, then sets password so future logins can use email+password
+  verifyOtp: (email: string, token: string, password?: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
 
@@ -40,19 +42,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, fullName?: string) => {
-    const redirectUrl = `${window.location.origin}/`;
-    
-    const { error } = await supabase.auth.signUp({
+  const signUp = async (email: string, _password: string, fullName?: string) => {
+    // Use Email OTP (passwordless) to verify email during signup.
+    // After OTP verification we set the password via updateUser.
+    const { error } = await supabase.auth.signInWithOtp({
       email,
-      password,
       options: {
-        emailRedirectTo: redirectUrl,
+        shouldCreateUser: true,
+        // Keep redirect configured in case the project is set to magic-link mode.
+        emailRedirectTo: `${window.location.origin}/auth`,
         data: {
-          full_name: fullName
-        }
-      }
+          full_name: fullName,
+        },
+      },
     });
+
     return { error };
   };
 
@@ -64,14 +68,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return { error };
   };
 
-  // Verify OTP token (for signup email verification)
-  const verifyOtp = async (email: string, token: string) => {
-    const { error } = await supabase.auth.verifyOtp({
+  // Verify emailed OTP, then set password for future email+password logins
+  const verifyOtp = async (email: string, token: string, password?: string) => {
+    const { error: verifyError } = await supabase.auth.verifyOtp({
       email,
       token,
-      type: 'signup' // Use 'signup' type for email verification after signup
+      type: 'email',
     });
-    return { error };
+
+    if (verifyError) return { error: verifyError };
+
+    if (password) {
+      const { error: passwordError } = await supabase.auth.updateUser({ password });
+      if (passwordError) return { error: passwordError };
+    }
+
+    return { error: null };
   };
 
   const signOut = async () => {
