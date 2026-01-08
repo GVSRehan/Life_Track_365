@@ -12,6 +12,7 @@ import {
 import CalendarView from '@/components/CalendarView';
 import DayScheduler from '@/components/DayScheduler';
 import AnalyticsDashboard from '@/components/AnalyticsDashboard';
+import InstallPrompt from '@/components/InstallPrompt';
 import { useAuth } from '@/hooks/useAuth';
 
 const Index = () => {
@@ -125,6 +126,9 @@ const Index = () => {
       <main className="container mx-auto px-4 py-6">
         {renderActiveView()}
       </main>
+
+      {/* Android Install Prompt */}
+      <InstallPrompt />
     </div>
   );
 };
