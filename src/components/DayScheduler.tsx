@@ -6,10 +6,14 @@ import { Task, TASK_CATEGORIES, TaskCategory } from '@/types/task';
 import TaskForm from '@/components/TaskForm';
 import TaskBlock from '@/components/TaskBlock';
 import TaskNotification from '@/components/TaskNotification';
+import PomodoroSuggestion from '@/components/PomodoroSuggestion';
+import PomodoroTimer from '@/components/PomodoroTimer';
+import SleepReminderSuggestion from '@/components/SleepReminderSuggestion';
 import { formatDateForDisplay, toYmdDateString } from '@/utils/dateUtils';
 import { useServerTime } from '@/hooks/useServerTime';
 import { useTasks } from '@/hooks/useTasks';
 import { useAuth } from '@/hooks/useAuth';
+import { useSleepReminder } from '@/hooks/useSleepReminder';
 
 interface DaySchedulerProps {
   selectedDate: Date;
@@ -36,12 +40,23 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
     isUpdating 
   } = useTasks(dateString);
   
+  const { addReminder } = useSleepReminder();
+  
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [activeNotification, setActiveNotification] = useState<{
     task: Task;
     type: 'before' | 'after';
   } | null>(null);
+  
+  // Pomodoro state
+  const [pendingTask, setPendingTask] = useState<Omit<Task, 'id' | 'createdAt'> | null>(null);
+  const [showPomodoroSuggestion, setShowPomodoroSuggestion] = useState(false);
+  const [pomodoroSession, setPomodoroSession] = useState<{ minutes: number; title: string } | null>(null);
+  
+  // Sleep reminder state
+  const [showSleepSuggestion, setShowSleepSuggestion] = useState(false);
+  const [pendingSleepTask, setPendingSleepTask] = useState<{ id: string; title: string; endTime: string } | null>(null);
 
   // Compare dates as strings (YYYY-MM-DD format ensures correct comparison)
   const isPastDate = dateString < currentDateTime.dateString;
@@ -106,11 +121,63 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
 
   // Handle adding a new task
   const handleAddTask = (taskData: Omit<Task, 'id' | 'createdAt'>) => {
+    // Check if study task - suggest Pomodoro
+    if (taskData.category === 'study') {
+      setPendingTask(taskData);
+      setShowPomodoroSuggestion(true);
+      setShowTaskForm(false);
+      return;
+    }
+    
     createTask(taskData, {
-      onSuccess: () => {
+      onSuccess: (newTask) => {
         setShowTaskForm(false);
+        // Check if sleep task - suggest wake-up reminder
+        if (taskData.category === 'sleep' && newTask) {
+          setPendingSleepTask({ 
+            id: newTask.id, 
+            title: taskData.title, 
+            endTime: taskData.endTime 
+          });
+          setShowSleepSuggestion(true);
+        }
       }
     });
+  };
+  
+  // Handle Pomodoro acceptance
+  const handlePomodoroAccept = (minutes: number) => {
+    if (pendingTask) {
+      createTask(pendingTask, {
+        onSuccess: () => {
+          setPomodoroSession({ minutes, title: pendingTask.title });
+        }
+      });
+    }
+    setShowPomodoroSuggestion(false);
+    setPendingTask(null);
+  };
+  
+  const handlePomodoroDecline = () => {
+    if (pendingTask) {
+      createTask(pendingTask);
+    }
+    setShowPomodoroSuggestion(false);
+    setPendingTask(null);
+  };
+  
+  // Handle sleep reminder
+  const handleSleepReminderAccept = (wakeUpTime: string) => {
+    if (pendingSleepTask) {
+      addReminder(pendingSleepTask.id, pendingSleepTask.title, wakeUpTime, dateString, 5);
+    }
+    setShowSleepSuggestion(false);
+    setPendingSleepTask(null);
+  };
+  
+  const handleSleepReminderDecline = () => {
+    setShowSleepSuggestion(false);
+    setPendingSleepTask(null);
   };
 
   // Handle updating an existing task
@@ -332,6 +399,34 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
           type={activeNotification.type}
           onAcknowledge={handleTaskAcknowledge}
           onClose={() => setActiveNotification(null)}
+        />
+      )}
+
+      {/* Pomodoro Suggestion */}
+      {showPomodoroSuggestion && pendingTask && (
+        <PomodoroSuggestion
+          taskTitle={pendingTask.title}
+          onAccept={handlePomodoroAccept}
+          onDecline={handlePomodoroDecline}
+        />
+      )}
+
+      {/* Pomodoro Timer */}
+      {pomodoroSession && (
+        <PomodoroTimer
+          totalStudyMinutes={pomodoroSession.minutes}
+          taskTitle={pomodoroSession.title}
+          onClose={() => setPomodoroSession(null)}
+        />
+      )}
+
+      {/* Sleep Reminder Suggestion */}
+      {showSleepSuggestion && pendingSleepTask && (
+        <SleepReminderSuggestion
+          taskTitle={pendingSleepTask.title}
+          sleepEndTime={pendingSleepTask.endTime}
+          onAccept={handleSleepReminderAccept}
+          onDecline={handleSleepReminderDecline}
         />
       )}
     </div>
