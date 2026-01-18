@@ -59,18 +59,23 @@ export const useServerTime = () => {
         const serverData = data as unknown as ServerTime;
         setServerTime(serverData);
         
-        // Convert to CurrentDateTime format
+        // Convert UTC timestamp to local time
         const serverDate = new Date(serverData.timestamp);
-        const hour = Number(serverData.hour);
+        // Use LOCAL time from the Date object (JavaScript auto-converts to local)
+        const localHour = serverDate.getHours();
+        const localMinute = serverDate.getMinutes();
+        const localYear = serverDate.getFullYear();
+        const localMonth = String(serverDate.getMonth() + 1).padStart(2, '0');
+        const localDay = String(serverDate.getDate()).padStart(2, '0');
         
         setCurrentDateTime({
           date: serverDate,
-          dateString: serverData.date,
+          dateString: `${localYear}-${localMonth}-${localDay}`,
           time: {
-            hour: hour,
-            minute: Number(serverData.minute),
-            hour12: hour > 12 ? hour - 12 : hour === 0 ? 12 : hour,
-            ampm: hour >= 12 ? 'PM' : 'AM'
+            hour: localHour,
+            minute: localMinute,
+            hour12: localHour > 12 ? localHour - 12 : localHour === 0 ? 12 : localHour,
+            ampm: localHour >= 12 ? 'PM' : 'AM'
           }
         });
       }
