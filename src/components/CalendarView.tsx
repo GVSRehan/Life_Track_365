@@ -1,10 +1,10 @@
-
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { TASK_CATEGORIES, Task } from '@/types/task';
-import { getCurrentDateTime, toYmdDateString } from '@/utils/dateUtils';
+import { toYmdDateString } from '@/utils/dateUtils';
+import { useServerTime } from '@/hooks/useServerTime';
 
 interface CalendarViewProps {
   selectedDate: Date;
@@ -13,16 +13,7 @@ interface CalendarViewProps {
 
 const CalendarView = ({ selectedDate, onDateSelect }: CalendarViewProps) => {
   const [currentDate, setCurrentDate] = useState(new Date(selectedDate));
-  const [currentDateTime, setCurrentDateTime] = useState(getCurrentDateTime());
-
-  // Update current time every minute
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentDateTime(getCurrentDateTime());
-    }, 60000);
-
-    return () => clearInterval(interval);
-  }, []);
+  const { currentDateTime } = useServerTime();
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
