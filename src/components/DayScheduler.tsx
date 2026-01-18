@@ -7,7 +7,7 @@ import TaskForm from '@/components/TaskForm';
 import TaskBlock from '@/components/TaskBlock';
 import TaskNotification from '@/components/TaskNotification';
 import PomodoroSuggestion from '@/components/PomodoroSuggestion';
-import PomodoroTimer from '@/components/PomodoroTimer';
+import AnalogPomodoroTimer from '@/components/AnalogPomodoroTimer';
 import SleepReminderSuggestion from '@/components/SleepReminderSuggestion';
 import { formatDateForDisplay, toYmdDateString } from '@/utils/dateUtils';
 import { useServerTime } from '@/hooks/useServerTime';
@@ -411,9 +411,9 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
         />
       )}
 
-      {/* Pomodoro Timer */}
+      {/* Analog Pomodoro Timer */}
       {pomodoroSession && (
-        <PomodoroTimer
+        <AnalogPomodoroTimer
           totalStudyMinutes={pomodoroSession.minutes}
           taskTitle={pomodoroSession.title}
           onClose={() => setPomodoroSession(null)}
