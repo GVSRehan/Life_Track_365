@@ -11,6 +11,7 @@ const InstallPrompt = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [isAndroid, setIsAndroid] = useState(false);
+  const [forceShow, setForceShow] = useState(false);
 
   useEffect(() => {
     // Check if Android
@@ -25,46 +26,63 @@ const InstallPrompt = () => {
 
     // Check if user dismissed prompt before
     const dismissed = localStorage.getItem('installPromptDismissed');
-    if (dismissed) {
+    const shouldShowAuto = !dismissed || (() => {
       const dismissedDate = new Date(dismissed);
       const daysSinceDismiss = (Date.now() - dismissedDate.getTime()) / (1000 * 60 * 60 * 24);
-      if (daysSinceDismiss < 7) {
-        return;
-      }
-    }
+      return daysSinceDismiss >= 7;
+    })();
 
     const handleBeforeInstall = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setShowPrompt(true);
+      if (shouldShowAuto) {
+        setShowPrompt(true);
+      }
+    };
+
+    // Listen for custom event from download button
+    const handleShowInstall = () => {
+      if (deferredPrompt) {
+        setShowPrompt(true);
+        setForceShow(true);
+      } else {
+        // Show manual instructions if PWA prompt not available
+        setForceShow(true);
+        setShowPrompt(true);
+      }
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    window.addEventListener('show-install-prompt', handleShowInstall);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+      window.removeEventListener('show-install-prompt', handleShowInstall);
     };
-  }, []);
+  }, [deferredPrompt]);
 
   const handleInstall = async () => {
-    if (!deferredPrompt) return;
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
 
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setShowPrompt(false);
+        setForceShow(false);
+      }
 
-    if (outcome === 'accepted') {
-      setShowPrompt(false);
+      setDeferredPrompt(null);
     }
-
-    setDeferredPrompt(null);
   };
 
   const handleDismiss = () => {
     setShowPrompt(false);
+    setForceShow(false);
     localStorage.setItem('installPromptDismissed', new Date().toISOString());
   };
 
-  if (!showPrompt || !isAndroid) return null;
+  // Show if: (Android AND auto-show) OR forceShow
+  if (!showPrompt || (!isAndroid && !forceShow)) return null;
 
   return (
     <div className="fixed bottom-4 left-4 right-4 z-50 md:left-auto md:right-4 md:w-96">
@@ -74,9 +92,14 @@ const InstallPrompt = () => {
             <Smartphone className="h-6 w-6 text-primary" />
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-foreground">Install App</h3>
+            <h3 className="font-semibold text-foreground">
+              {deferredPrompt ? 'Install App' : 'Get the App'}
+            </h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Add Life Horizon Tracker to your home screen for quick access
+              {deferredPrompt 
+                ? 'Add LifeTrack 365 to your home screen for quick access'
+                : 'Open in Chrome browser, tap menu (⋮) → "Add to Home Screen"'
+              }
             </p>
           </div>
           <button
@@ -87,10 +110,16 @@ const InstallPrompt = () => {
           </button>
         </div>
         <div className="flex gap-2 mt-4">
-          <Button onClick={handleInstall} className="flex-1">
-            <Download className="h-4 w-4 mr-2" />
-            Install
-          </Button>
+          {deferredPrompt ? (
+            <Button onClick={handleInstall} className="flex-1">
+              <Download className="h-4 w-4 mr-2" />
+              Install
+            </Button>
+          ) : (
+            <Button onClick={handleDismiss} className="flex-1">
+              Got it
+            </Button>
+          )}
           <Button variant="outline" onClick={handleDismiss}>
             Later
           </Button>

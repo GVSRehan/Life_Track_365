@@ -4,11 +4,13 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 import { Button } from '@/components/ui/button';
 import { Task, TASK_CATEGORIES, TaskCategory } from '@/types/task';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const AnalyticsDashboard = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [timeFrame, setTimeFrame] = useState<'day' | 'week' | 'month'>('week');
   const [selectedDate] = useState(new Date());
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const storedTasks = localStorage.getItem('lifetrack-tasks');
@@ -105,21 +107,42 @@ const AnalyticsDashboard = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-card rounded-lg shadow-sm border p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-semibold text-foreground">Dashboard</h2>
-          <div className="flex space-x-2">
-            {['day', 'week', 'month'].map((frame) => (
-              <Button
-                key={frame}
-                variant={timeFrame === frame ? 'default' : 'outline'}
-                onClick={() => setTimeFrame(frame as any)}
-                className="capitalize"
-              >
-                {frame}
-              </Button>
-            ))}
-          </div>
+      <div className="bg-card rounded-lg shadow-sm border p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+          <h2 className="text-xl sm:text-2xl font-semibold text-foreground">Dashboard</h2>
+          
+          {/* Mobile: Fixed Bottom Tab Bar Style */}
+          {isMobile ? (
+            <div className="flex w-full bg-muted rounded-lg p-1">
+              {['day', 'week', 'month'].map((frame) => (
+                <button
+                  key={frame}
+                  onClick={() => setTimeFrame(frame as any)}
+                  className={cn(
+                    "flex-1 py-2.5 text-sm font-medium rounded-md transition-all capitalize",
+                    timeFrame === frame 
+                      ? "bg-background text-foreground shadow-sm" 
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {frame}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="flex space-x-2">
+              {['day', 'week', 'month'].map((frame) => (
+                <Button
+                  key={frame}
+                  variant={timeFrame === frame ? 'default' : 'outline'}
+                  onClick={() => setTimeFrame(frame as any)}
+                  className="capitalize"
+                >
+                  {frame}
+                </Button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Summary Cards */}

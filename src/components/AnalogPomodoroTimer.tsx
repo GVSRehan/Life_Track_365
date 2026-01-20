@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, RotateCcw, Coffee, BookOpen, X, Settings2 } from 'lucide-react';
+import { Play, Pause, RotateCcw, Coffee, BookOpen, X, Settings2, Minimize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import AnalogClock from './AnalogClock';
 import { useAlarm } from '@/hooks/useAlarm';
-import { useTimerSettings, ClockStyle } from '@/hooks/useTimerSettings';
+import { useTimerSettings } from '@/hooks/useTimerSettings';
+import { usePomodoroSession } from '@/hooks/usePomodoroSession';
 import {
   Sheet,
   SheetContent,
@@ -16,28 +17,41 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 
 interface AnalogPomodoroTimerProps {
-  totalStudyMinutes: number;
-  onClose: () => void;
-  taskTitle: string;
+  totalStudyMinutes?: number;
+  onClose?: () => void;
+  taskTitle?: string;
 }
 
 type SessionType = 'work' | 'shortBreak' | 'longBreak';
 
-const AnalogPomodoroTimer = ({ totalStudyMinutes, onClose, taskTitle }: AnalogPomodoroTimerProps) => {
+const AnalogPomodoroTimer = ({ totalStudyMinutes: propMinutes, onClose: propOnClose, taskTitle: propTitle }: AnalogPomodoroTimerProps) => {
   const { settings, updateSettings } = useTimerSettings();
   const { playAlarm, requestPermissions } = useAlarm();
+  const { session, updateSession, minimizeSession, endSession } = usePomodoroSession();
+  
+  // Use context session if available, otherwise fall back to props
+  const isFromContext = session && !session.isMinimized;
+  const totalStudyMinutes = isFromContext ? session.totalStudyMinutes : (propMinutes || 25);
+  const taskTitle = isFromContext ? session.taskTitle : (propTitle || 'Focus Session');
   
   const WORK_DURATION = settings.workDuration * 60;
   const SHORT_BREAK = settings.shortBreakDuration * 60;
   const LONG_BREAK = settings.longBreakDuration * 60;
   const SESSIONS_BEFORE_LONG_BREAK = settings.sessionsBeforeLongBreak;
 
-  const [timeLeft, setTimeLeft] = useState(WORK_DURATION);
-  const [isRunning, setIsRunning] = useState(false);
-  const [sessionType, setSessionType] = useState<SessionType>('work');
-  const [completedSessions, setCompletedSessions] = useState(0);
-  const [totalTimeStudied, setTotalTimeStudied] = useState(0);
+  // Local state for when not using context
+  const [localTimeLeft, setLocalTimeLeft] = useState(WORK_DURATION);
+  const [localIsRunning, setLocalIsRunning] = useState(false);
+  const [localSessionType, setLocalSessionType] = useState<SessionType>('work');
+  const [localCompletedSessions, setLocalCompletedSessions] = useState(0);
+  const [localTotalTimeStudied, setLocalTotalTimeStudied] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
+
+  // Use context values if available
+  const timeLeft = isFromContext ? session.timeLeft : localTimeLeft;
+  const isRunning = isFromContext ? session.isRunning : localIsRunning;
+  const sessionType = (isFromContext ? session.sessionType : localSessionType) as SessionType;
+  const completedSessions = isFromContext ? session.completedSessions : localCompletedSessions;
 
   const totalSessions = Math.ceil(totalStudyMinutes / settings.workDuration);
 
@@ -49,29 +63,51 @@ const AnalogPomodoroTimer = ({ totalStudyMinutes, onClose, taskTitle }: AnalogPo
     }
   }, [sessionType, WORK_DURATION, SHORT_BREAK, LONG_BREAK]);
 
-  // Timer countdown
+  // Timer countdown - only for local state (context handles its own timer)
   useEffect(() => {
+    if (isFromContext) return; // Context handles its own timer
+    
     let interval: NodeJS.Timeout | null = null;
 
-    if (isRunning && timeLeft > 0) {
+    if (localIsRunning && localTimeLeft > 0) {
       interval = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (sessionType === 'work') {
-            setTotalTimeStudied((t) => t + 1);
+        setLocalTimeLeft((prev) => {
+          if (localSessionType === 'work') {
+            setLocalTotalTimeStudied((t) => t + 1);
           }
           return prev - 1;
         });
       }, 1000);
-    } else if (timeLeft === 0 && isRunning) {
+    } else if (localTimeLeft === 0 && localIsRunning) {
       handleSessionComplete();
     }
 
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isRunning, timeLeft, sessionType]);
+  }, [localIsRunning, localTimeLeft, localSessionType, isFromContext]);
+
+  // Check if session complete from context
+  useEffect(() => {
+    if (isFromContext && session.timeLeft === 0 && !session.isRunning) {
+      handleSessionComplete();
+    }
+  }, [isFromContext, session?.timeLeft, session?.isRunning]);
 
   const handleSessionComplete = useCallback(() => {
+    const setIsRunning = isFromContext 
+      ? (val: boolean) => updateSession({ isRunning: val }) 
+      : setLocalIsRunning;
+    const setSessionType = isFromContext
+      ? (val: SessionType) => updateSession({ sessionType: val })
+      : setLocalSessionType;
+    const setTimeLeft = isFromContext
+      ? (val: number) => updateSession({ timeLeft: val })
+      : setLocalTimeLeft;
+    const setCompletedSessions = isFromContext
+      ? (val: number) => updateSession({ completedSessions: val })
+      : setLocalCompletedSessions;
+    
     setIsRunning(false);
 
     // Play alarm
@@ -106,23 +142,51 @@ const AnalogPomodoroTimer = ({ totalStudyMinutes, onClose, taskTitle }: AnalogPo
       setSessionType('work');
       setTimeLeft(WORK_DURATION);
     }
-  }, [sessionType, completedSessions, totalSessions, settings.soundEnabled, playAlarm, WORK_DURATION, SHORT_BREAK, LONG_BREAK, SESSIONS_BEFORE_LONG_BREAK, totalStudyMinutes]);
+  }, [isFromContext, sessionType, completedSessions, totalSessions, settings.soundEnabled, playAlarm, WORK_DURATION, SHORT_BREAK, LONG_BREAK, SESSIONS_BEFORE_LONG_BREAK, totalStudyMinutes, updateSession]);
 
   const toggleTimer = async () => {
     if (!isRunning) {
       await requestPermissions();
     }
-    setIsRunning(!isRunning);
+    if (isFromContext) {
+      updateSession({ isRunning: !isRunning });
+    } else {
+      setLocalIsRunning(!isRunning);
+    }
   };
 
   const resetTimer = () => {
-    setIsRunning(false);
-    setTimeLeft(WORK_DURATION);
-    setSessionType('work');
+    if (isFromContext) {
+      updateSession({ isRunning: false, timeLeft: WORK_DURATION, sessionType: 'work' });
+    } else {
+      setLocalIsRunning(false);
+      setLocalTimeLeft(WORK_DURATION);
+      setLocalSessionType('work');
+    }
+  };
+
+  const handleClose = () => {
+    if (isFromContext) {
+      endSession();
+    }
+    propOnClose?.();
+  };
+
+  const handleMinimize = () => {
+    if (isFromContext) {
+      minimizeSession();
+    } else {
+      // Start session in context before minimizing
+      propOnClose?.();
+    }
   };
 
   const skipToNext = () => {
-    setIsRunning(false);
+    if (isFromContext) {
+      updateSession({ isRunning: false });
+    } else {
+      setLocalIsRunning(false);
+    }
     handleSessionComplete();
   };
 
@@ -132,14 +196,25 @@ const AnalogPomodoroTimer = ({ totalStudyMinutes, onClose, taskTitle }: AnalogPo
     <div className="fixed inset-0 bg-background flex flex-col z-50 safe-area-inset">
       {/* Header - Minimal */}
       <div className="flex items-center justify-between px-4 py-3 sm:px-6">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onClose}
-          className="h-10 w-10 rounded-full"
-        >
-          <X className="h-5 w-5" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleClose}
+            className="h-10 w-10 rounded-full"
+          >
+            <X className="h-5 w-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleMinimize}
+            className="h-10 w-10 rounded-full"
+            title="Minimize to background"
+          >
+            <Minimize2 className="h-5 w-5" />
+          </Button>
+        </div>
         
         <Sheet open={showSettings} onOpenChange={setShowSettings}>
           <SheetTrigger asChild>
@@ -310,7 +385,7 @@ const AnalogPomodoroTimer = ({ totalStudyMinutes, onClose, taskTitle }: AnalogPo
           <div className="text-center">
             <div className="text-4xl mb-3">🎉</div>
             <p className="text-lg font-semibold text-primary mb-4">All sessions complete!</p>
-            <Button onClick={onClose} className="rounded-full px-8">
+            <Button onClick={handleClose} className="rounded-full px-8">
               Done
             </Button>
           </div>

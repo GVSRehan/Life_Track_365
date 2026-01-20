@@ -14,6 +14,7 @@ import { useServerTime } from '@/hooks/useServerTime';
 import { useTasks } from '@/hooks/useTasks';
 import { useAuth } from '@/hooks/useAuth';
 import { useSleepReminder } from '@/hooks/useSleepReminder';
+import { usePomodoroSession } from '@/hooks/usePomodoroSession';
 
 interface DaySchedulerProps {
   selectedDate: Date;
@@ -41,6 +42,7 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
   } = useTasks(dateString);
   
   const { addReminder } = useSleepReminder();
+  const { session, startSession, endSession } = usePomodoroSession();
   
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -52,7 +54,9 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
   // Pomodoro state
   const [pendingTask, setPendingTask] = useState<Omit<Task, 'id' | 'createdAt'> | null>(null);
   const [showPomodoroSuggestion, setShowPomodoroSuggestion] = useState(false);
-  const [pomodoroSession, setPomodoroSession] = useState<{ minutes: number; title: string } | null>(null);
+  
+  // Check if there's an active pomodoro session (not minimized)
+  const showPomodoroTimer = session && !session.isMinimized;
   
   // Sleep reminder state
   const [showSleepSuggestion, setShowSleepSuggestion] = useState(false);
@@ -150,7 +154,8 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
     if (pendingTask) {
       createTask(pendingTask, {
         onSuccess: () => {
-          setPomodoroSession({ minutes, title: pendingTask.title });
+          // Start pomodoro session in context
+          startSession(pendingTask.title, minutes);
         }
       });
     }
@@ -411,12 +416,10 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
         />
       )}
 
-      {/* Analog Pomodoro Timer */}
-      {pomodoroSession && (
+      {/* Analog Pomodoro Timer - Shows when session is active and not minimized */}
+      {showPomodoroTimer && (
         <AnalogPomodoroTimer
-          totalStudyMinutes={pomodoroSession.minutes}
-          taskTitle={pomodoroSession.title}
-          onClose={() => setPomodoroSession(null)}
+          onClose={() => endSession()}
         />
       )}
 

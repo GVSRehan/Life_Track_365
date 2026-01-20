@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Calendar, Clock, BarChart3, Menu, LogOut, User } from 'lucide-react';
+import { Calendar, Clock, BarChart3, Menu, LogOut, User, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -13,7 +13,9 @@ import CalendarView from '@/components/CalendarView';
 import DayScheduler from '@/components/DayScheduler';
 import AnalyticsDashboard from '@/components/AnalyticsDashboard';
 import InstallPrompt from '@/components/InstallPrompt';
+import OngoingTaskBanner from '@/components/OngoingTaskBanner';
 import { useAuth } from '@/hooks/useAuth';
+import { PomodoroProvider } from '@/hooks/usePomodoroSession';
 
 const Index = () => {
   const [activeView, setActiveView] = useState<'calendar' | 'scheduler' | 'analytics'>('calendar');
@@ -44,92 +46,125 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card shadow-sm">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Calendar className="h-8 w-8 text-primary" />
-              <h1 className="text-2xl font-bold text-foreground">LifeTrack 365</h1>
-            </div>
-            
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center space-x-2">
-              {navigationItems.map((item) => (
-                <Button
-                  key={item.key}
-                  variant={activeView === item.key ? 'default' : 'ghost'}
-                  onClick={() => setActiveView(item.key as any)}
-                  className="flex items-center space-x-2"
-                >
-                  <item.icon className="h-4 w-4" />
-                  <span>{item.label}</span>
-                </Button>
-              ))}
+    <PomodoroProvider>
+      <div className="min-h-screen bg-background">
+        {/* Header */}
+        <header className="border-b bg-card shadow-sm">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+                <h1 className="text-lg sm:text-2xl font-bold text-foreground">LifeTrack 365</h1>
+              </div>
               
-              {/* User Menu */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <User className="h-4 w-4" />
+              {/* Desktop Navigation */}
+              <div className="hidden md:flex items-center space-x-2">
+                {navigationItems.map((item) => (
+                  <Button
+                    key={item.key}
+                    variant={activeView === item.key ? 'default' : 'ghost'}
+                    onClick={() => setActiveView(item.key as any)}
+                    className="flex items-center space-x-2"
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.label}</span>
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem disabled>
-                    {user?.email}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleSignOut}>
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Sign Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            {/* Mobile Navigation */}
-            <div className="md:hidden">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon">
-                    <Menu className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  {navigationItems.map((item) => (
-                    <DropdownMenuItem
-                      key={item.key}
-                      onClick={() => setActiveView(item.key as any)}
-                      className="flex items-center space-x-2 cursor-pointer"
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.label}</span>
+                ))}
+                
+                {/* Android Download Button - Desktop */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground"
+                  onClick={() => {
+                    // Trigger PWA install if available
+                    const event = new CustomEvent('show-install-prompt');
+                    window.dispatchEvent(event);
+                  }}
+                >
+                  <Download className="h-4 w-4" />
+                  <span>Get App</span>
+                </Button>
+                
+                {/* User Menu */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <User className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="bg-card border shadow-lg z-50">
+                    <DropdownMenuItem disabled>
+                      {user?.email}
                     </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem disabled>
-                    {user?.email}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleSignOut}>
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Sign Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleSignOut}>
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Sign Out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              {/* Mobile Navigation */}
+              <div className="md:hidden flex items-center gap-2">
+                {/* Android Download Button - Mobile */}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 border-primary/50 text-primary"
+                  onClick={() => {
+                    const event = new CustomEvent('show-install-prompt');
+                    window.dispatchEvent(event);
+                  }}
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+                
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon">
+                      <Menu className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48 bg-card border shadow-lg z-50">
+                    {navigationItems.map((item) => (
+                      <DropdownMenuItem
+                        key={item.key}
+                        onClick={() => setActiveView(item.key as any)}
+                        className="flex items-center space-x-2 cursor-pointer"
+                      >
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.label}</span>
+                      </DropdownMenuItem>
+                    ))}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem disabled>
+                      {user?.email}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleSignOut}>
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Sign Out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-6">
-        {renderActiveView()}
-      </main>
+        {/* Main Content */}
+        <main className="container mx-auto px-4 py-6">
+          {renderActiveView()}
+        </main>
 
-      {/* Android Install Prompt */}
-      <InstallPrompt />
-    </div>
+        {/* Android Install Prompt */}
+        <InstallPrompt />
+        
+        {/* Ongoing Task Banner - Shows when Pomodoro is minimized */}
+        <OngoingTaskBanner />
+      </div>
+    </PomodoroProvider>
   );
 };
 
