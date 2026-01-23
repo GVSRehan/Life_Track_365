@@ -255,25 +255,29 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
   return (
     <div className="bg-card rounded-lg shadow-sm border">
       {/* Header */}
-      <div className="p-6 border-b">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-semibold text-foreground">
+      <div className="p-4 sm:p-6 border-b">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <h2 className="text-xl sm:text-2xl font-semibold text-foreground">
               Daily Schedule
             </h2>
-            <p className="text-muted-foreground mt-1">
-              {formatDateForDisplay(selectedDate)}
-              {isPastDate && <span className="ml-2 text-sm bg-muted px-2 py-1 rounded">Past Date</span>}
+            <div className="flex flex-wrap items-center gap-2 mt-1">
+              <p className="text-sm sm:text-base text-muted-foreground">
+                {formatDateForDisplay(selectedDate)}
+              </p>
+              {isPastDate && (
+                <span className="text-xs bg-muted px-2 py-0.5 rounded">Past Date</span>
+              )}
               {isToday && (
-                <span className="ml-2 text-sm bg-primary/10 text-primary px-2 py-1 rounded">
+                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded whitespace-nowrap">
                   Today - {currentDateTime.time.hour12}:{currentDateTime.time.minute.toString().padStart(2, '0')} {currentDateTime.time.ampm}
                 </span>
               )}
-            </p>
+            </div>
             {/* Remaining time display */}
             {isToday && remainingTime && (
-              <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
-                <Clock className="h-4 w-4" />
+              <div className="flex items-center gap-2 mt-2 text-xs sm:text-sm text-muted-foreground">
+                <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
                 <span>
                   {remainingTime.hours}h {remainingTime.minutes}m remaining today
                 </span>
@@ -282,8 +286,9 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
           </div>
           <Button 
             onClick={() => setShowTaskForm(true)}
-            className="flex items-center space-x-2"
+            className="flex items-center gap-2 w-full sm:w-auto"
             disabled={isPastDate || (isToday && dayStatus.isComplete) || isCreating}
+            size="default"
           >
             <Plus className="h-4 w-4" />
             <span>Add Task</span>
@@ -292,12 +297,12 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
       </div>
 
       {/* Schedule Grid */}
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         {/* Past date message - only show for dates BEFORE today */}
         {isPastDate && (
-          <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-3">
-            <AlertCircle className="h-5 w-5 text-destructive" />
-            <p className="text-destructive text-sm font-medium">
+          <div className="mb-4 p-3 sm:p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-start gap-2 sm:gap-3">
+            <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-destructive flex-shrink-0 mt-0.5" />
+            <p className="text-destructive text-xs sm:text-sm font-medium">
               This day has already passed. You cannot add new tasks.
             </p>
           </div>
@@ -305,9 +310,9 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
         
         {/* Today with end of day warning */}
         {isToday && dayStatus.isComplete && (
-          <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-3">
-            <AlertCircle className="h-5 w-5 text-destructive" />
-            <p className="text-destructive text-sm font-medium">
+          <div className="mb-4 p-3 sm:p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-start gap-2 sm:gap-3">
+            <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-destructive flex-shrink-0 mt-0.5" />
+            <p className="text-destructive text-xs sm:text-sm font-medium">
               {dayStatus.reason}. You cannot add new tasks.
             </p>
           </div>
@@ -315,30 +320,30 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
         
         {/* Today - can still add tasks for future time slots */}
         {isToday && !dayStatus.isComplete && (
-          <div className="mb-4 p-4 bg-primary/5 border border-primary/20 rounded-lg">
-            <p className="text-primary text-sm">
+          <div className="mb-4 p-3 sm:p-4 bg-primary/5 border border-primary/20 rounded-lg">
+            <p className="text-primary text-xs sm:text-sm">
               Current server time: {currentDateTime.time.hour12}:{currentDateTime.time.minute.toString().padStart(2, '0')} {currentDateTime.time.ampm}. 
               You can add tasks for future time slots only.
             </p>
           </div>
         )}
         
-        <div className="space-y-1">
+        <div className="space-y-0.5 sm:space-y-1">
           {hours.map(hour => {
             const isPastTimeSlot = isTimeSlotPastToday(hour);
             return (
               <div key={hour} className="flex">
                 {/* Time Label */}
-                <div className="w-20 flex-shrink-0 text-sm text-muted-foreground py-4 font-medium">
-                  {hour.toString().padStart(2, '0')}:00
-                  <div className="text-xs opacity-60">
+                <div className="w-14 sm:w-20 flex-shrink-0 text-xs sm:text-sm text-muted-foreground py-3 sm:py-4 font-medium">
+                  <span className="font-semibold">{hour.toString().padStart(2, '0')}:00</span>
+                  <div className="text-[10px] sm:text-xs opacity-60">
                     {hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`}
                   </div>
                 </div>
                 
                 {/* Task Area */}
                 <div className={cn(
-                  "flex-1 min-h-[60px] border-l border-border pl-6 relative",
+                  "flex-1 min-h-[50px] sm:min-h-[60px] border-l border-border pl-3 sm:pl-6 relative",
                   isPastTimeSlot && "bg-muted/30 opacity-60"
                 )}>
                   {tasks
@@ -370,7 +375,7 @@ const DayScheduler = ({ selectedDate }: DaySchedulerProps) => {
                   {/* Past time indicator - ONLY show for today */}
                   {isPastTimeSlot && (
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-xs text-muted-foreground bg-background px-2 py-1 rounded border">
+                      <span className="text-[10px] sm:text-xs text-muted-foreground bg-background px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border">
                         Past Time
                       </span>
                     </div>
