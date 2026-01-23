@@ -82,21 +82,22 @@ const CalendarView = ({ selectedDate, onDateSelect }: CalendarViewProps) => {
   return (
     <div className="bg-card rounded-lg shadow-sm border">
       {/* Header */}
-      <div className="p-6 border-b">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-2xl font-semibold text-foreground">
+      <div className="p-4 sm:p-6 border-b">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-xl sm:text-2xl font-semibold text-foreground truncate">
               {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
             </h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Today: {today.toLocaleDateString()} - {currentDateTime.time.hour12}:{currentDateTime.time.minute.toString().padStart(2, '0')} {currentDateTime.time.ampm}
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1 truncate">
+              Today: {today.toLocaleDateString('en-GB')} - {currentDateTime.time.hour12}:{currentDateTime.time.minute.toString().padStart(2, '0')} {currentDateTime.time.ampm}
             </p>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
             <Button
               variant="outline"
               size="icon"
               onClick={() => navigateMonth('prev')}
+              className="h-8 w-8 sm:h-9 sm:w-9"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -104,6 +105,7 @@ const CalendarView = ({ selectedDate, onDateSelect }: CalendarViewProps) => {
               variant="outline"
               size="icon"
               onClick={() => navigateMonth('next')}
+              className="h-8 w-8 sm:h-9 sm:w-9"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -112,21 +114,21 @@ const CalendarView = ({ selectedDate, onDateSelect }: CalendarViewProps) => {
       </div>
 
       {/* Calendar Grid */}
-      <div className="p-6">
+      <div className="p-3 sm:p-6">
         {/* Week days header */}
-        <div className="grid grid-cols-7 gap-2 mb-4">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2 sm:mb-4">
           {weekDays.map(day => (
-            <div key={day} className="text-center text-sm font-medium text-muted-foreground p-2">
+            <div key={day} className="text-center text-xs sm:text-sm font-medium text-muted-foreground p-1 sm:p-2">
               {day}
             </div>
           ))}
         </div>
 
         {/* Calendar days */}
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2">
           {days.map((date, index) => {
             if (!date) {
-              return <div key={index} className="h-24"></div>;
+              return <div key={index} className="h-14 sm:h-24"></div>;
             }
 
             const tasks = getTasksForDate(date);
@@ -136,8 +138,8 @@ const CalendarView = ({ selectedDate, onDateSelect }: CalendarViewProps) => {
               <div
                 key={date.toISOString()}
                 className={cn(
-                  "h-24 border rounded-lg p-2 cursor-pointer transition-all hover:border-primary/50",
-                  isSelected(date) && "border-primary bg-primary/5",
+                  "h-14 sm:h-24 border rounded-md sm:rounded-lg p-1.5 sm:p-2 cursor-pointer transition-all hover:border-primary/50",
+                  isSelected(date) && "border-primary bg-primary/5 ring-1 ring-primary/20",
                   isToday(date) && "bg-accent",
                   !hasActiveTasks && "hover:bg-accent/50"
                 )}
@@ -145,14 +147,14 @@ const CalendarView = ({ selectedDate, onDateSelect }: CalendarViewProps) => {
               >
                 <div className="flex flex-col h-full">
                   <span className={cn(
-                    "text-sm font-medium",
+                    "text-xs sm:text-sm font-medium",
                     isToday(date) && "text-primary font-bold"
                   )}>
                     {date.getDate()}
                   </span>
                   
-                  {/* Task indicators */}
-                  <div className="flex-1 mt-1 space-y-1">
+                  {/* Task indicators - Hidden on mobile, shown on desktop */}
+                  <div className="hidden sm:flex sm:flex-1 mt-1 flex-wrap gap-0.5">
                     {tasks.slice(0, 3).map((task, taskIndex) => {
                       const category = TASK_CATEGORIES[task.category];
                       return (
@@ -177,6 +179,13 @@ const CalendarView = ({ selectedDate, onDateSelect }: CalendarViewProps) => {
                       </div>
                     )}
                   </div>
+                  
+                  {/* Mobile: Simple task count indicator */}
+                  {hasActiveTasks && (
+                    <div className="sm:hidden mt-auto">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary mx-auto" />
+                    </div>
+                  )}
                 </div>
               </div>
             );
