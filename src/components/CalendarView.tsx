@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { TASK_CATEGORIES, Task } from '@/types/task';
 import { toYmdDateString } from '@/utils/dateUtils';
 import { useServerTime } from '@/hooks/useServerTime';
+import { useEvents } from '@/hooks/useEvents';
 
 interface CalendarViewProps {
   selectedDate: Date;
@@ -14,6 +15,7 @@ interface CalendarViewProps {
 const CalendarView = ({ selectedDate, onDateSelect }: CalendarViewProps) => {
   const [currentDate, setCurrentDate] = useState(new Date(selectedDate));
   const { currentDateTime } = useServerTime();
+  const { getEventsForDate } = useEvents();
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -132,16 +134,19 @@ const CalendarView = ({ selectedDate, onDateSelect }: CalendarViewProps) => {
             }
 
             const tasks = getTasksForDate(date);
+            const events = getEventsForDate(date);
             const hasActiveTasks = tasks.length > 0;
+            const hasEvents = events.length > 0;
 
             return (
               <div
                 key={date.toISOString()}
                 className={cn(
-                  "h-14 sm:h-24 border rounded-md sm:rounded-lg p-1.5 sm:p-2 cursor-pointer transition-all hover:border-primary/50",
+                  "h-14 sm:h-24 border rounded-md sm:rounded-lg p-1.5 sm:p-2 cursor-pointer transition-all hover:border-primary/50 relative",
                   isSelected(date) && "border-primary bg-primary/5 ring-1 ring-primary/20",
                   isToday(date) && "bg-accent",
-                  !hasActiveTasks && "hover:bg-accent/50"
+                  hasEvents && "ring-1 ring-amber-400/50",
+                  !hasActiveTasks && !hasEvents && "hover:bg-accent/50"
                 )}
                 onClick={() => onDateSelect(date)}
               >
@@ -184,6 +189,13 @@ const CalendarView = ({ selectedDate, onDateSelect }: CalendarViewProps) => {
                   {hasActiveTasks && (
                     <div className="sm:hidden mt-auto">
                       <div className="w-1.5 h-1.5 rounded-full bg-primary mx-auto" />
+                    </div>
+                  )}
+                  
+                  {/* Event indicator */}
+                  {hasEvents && (
+                    <div className="absolute top-1 right-1 sm:top-1.5 sm:right-1.5">
+                      <span className="text-[10px] sm:text-xs">🎉</span>
                     </div>
                   )}
                 </div>
