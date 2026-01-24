@@ -1,6 +1,5 @@
-
-import { useState } from 'react';
-import { Calendar, Clock, BarChart3, Menu, LogOut, User, Download } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Calendar, Clock, BarChart3, Menu, LogOut, User, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -14,42 +13,108 @@ import DayScheduler from '@/components/DayScheduler';
 import AnalyticsDashboard from '@/components/AnalyticsDashboard';
 import InstallPrompt from '@/components/InstallPrompt';
 import OngoingTaskBanner from '@/components/OngoingTaskBanner';
+import EventsTicker from '@/components/EventsTicker';
+import PlatformDownloadDialog from '@/components/PlatformDownloadDialog';
 import { useAuth } from '@/hooks/useAuth';
 import { PomodoroProvider } from '@/hooks/usePomodoroSession';
+import { useSwipeGesture } from '@/hooks/useSwipeGesture';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
+
+type ViewType = 'calendar' | 'scheduler' | 'analytics';
 
 const Index = () => {
-  const [activeView, setActiveView] = useState<'calendar' | 'scheduler' | 'analytics'>('calendar');
+  const [activeView, setActiveView] = useState<ViewType>('calendar');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [showDownloadDialog, setShowDownloadDialog] = useState(false);
+  const [showGestureHint, setShowGestureHint] = useState(false);
   const { user, signOut } = useAuth();
+  const isMobile = useIsMobile();
+
+  // Show gesture hint for first-time mobile users
+  useEffect(() => {
+    if (isMobile) {
+      const hasSeenHint = localStorage.getItem('lifetrack-gesture-hint-seen');
+      if (!hasSeenHint) {
+        setShowGestureHint(true);
+        setTimeout(() => {
+          setShowGestureHint(false);
+          localStorage.setItem('lifetrack-gesture-hint-seen', 'true');
+        }, 4000);
+      }
+    }
+  }, [isMobile]);
+
+  // Handle date selection - automatically navigate to scheduler on mobile
+  const handleDateSelect = (date: Date) => {
+    setSelectedDate(date);
+    if (isMobile) {
+      setActiveView('scheduler');
+    }
+  };
+
+  // Navigation order for swipe
+  const viewOrder: ViewType[] = ['calendar', 'scheduler', 'analytics'];
+  
+  const navigateView = (direction: 'left' | 'right') => {
+    const currentIndex = viewOrder.indexOf(activeView);
+    if (direction === 'left' && currentIndex < viewOrder.length - 1) {
+      setActiveView(viewOrder[currentIndex + 1]);
+    } else if (direction === 'right' && currentIndex > 0) {
+      setActiveView(viewOrder[currentIndex - 1]);
+    }
+  };
+
+  // Swipe gesture handlers for mobile
+  const swipeHandlers = useSwipeGesture({
+    onSwipeLeft: () => navigateView('left'),
+    onSwipeRight: () => navigateView('right'),
+    onSwipeUp: () => {
+      if (activeView !== 'analytics') {
+        setActiveView('analytics');
+      }
+    },
+    threshold: 50
+  });
 
   const renderActiveView = () => {
     switch (activeView) {
       case 'calendar':
-        return <CalendarView selectedDate={selectedDate} onDateSelect={setSelectedDate} />;
+        return (
+          <div className="space-y-4">
+            <CalendarView selectedDate={selectedDate} onDateSelect={handleDateSelect} />
+            {/* Events Ticker below calendar */}
+            <EventsTicker />
+          </div>
+        );
       case 'scheduler':
         return <DayScheduler selectedDate={selectedDate} />;
       case 'analytics':
         return <AnalyticsDashboard />;
       default:
-        return <CalendarView selectedDate={selectedDate} onDateSelect={setSelectedDate} />;
+        return <CalendarView selectedDate={selectedDate} onDateSelect={handleDateSelect} />;
     }
   };
 
   const navigationItems = [
-    { key: 'calendar', label: 'Calendar', icon: Calendar },
-    { key: 'scheduler', label: 'Daily Schedule', icon: Clock },
-    { key: 'analytics', label: 'Analytics', icon: BarChart3 },
+    { key: 'calendar' as ViewType, label: 'Calendar', icon: Calendar },
+    { key: 'scheduler' as ViewType, label: 'Daily Schedule', icon: Clock },
+    { key: 'analytics' as ViewType, label: 'Analytics', icon: BarChart3 },
   ];
 
   const handleSignOut = async () => {
     await signOut();
   };
 
+  const handleDownloadClick = () => {
+    setShowDownloadDialog(true);
+  };
+
   return (
     <PomodoroProvider>
       <div className="min-h-screen bg-background">
         {/* Header */}
-        <header className="border-b bg-card shadow-sm">
+        <header className="border-b bg-card shadow-sm sticky top-0 z-40">
           <div className="container mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
@@ -63,7 +128,7 @@ const Index = () => {
                   <Button
                     key={item.key}
                     variant={activeView === item.key ? 'default' : 'ghost'}
-                    onClick={() => setActiveView(item.key as any)}
+                    onClick={() => setActiveView(item.key)}
                     className="flex items-center space-x-2"
                   >
                     <item.icon className="h-4 w-4" />
@@ -71,16 +136,12 @@ const Index = () => {
                   </Button>
                 ))}
                 
-                {/* Android Download Button - Desktop */}
+                {/* Download Button - Desktop */}
                 <Button
                   variant="outline"
                   size="sm"
                   className="flex items-center gap-2 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground"
-                  onClick={() => {
-                    // Trigger PWA install if available
-                    const event = new CustomEvent('show-install-prompt');
-                    window.dispatchEvent(event);
-                  }}
+                  onClick={handleDownloadClick}
                 >
                   <Download className="h-4 w-4" />
                   <span>Get App</span>
@@ -108,15 +169,12 @@ const Index = () => {
 
               {/* Mobile Navigation */}
               <div className="md:hidden flex items-center gap-2">
-                {/* Android Download Button - Mobile */}
+                {/* Download Button - Mobile */}
                 <Button
                   variant="outline"
                   size="icon"
                   className="h-9 w-9 border-primary/50 text-primary"
-                  onClick={() => {
-                    const event = new CustomEvent('show-install-prompt');
-                    window.dispatchEvent(event);
-                  }}
+                  onClick={handleDownloadClick}
                 >
                   <Download className="h-4 w-4" />
                 </Button>
@@ -131,7 +189,7 @@ const Index = () => {
                     {navigationItems.map((item) => (
                       <DropdownMenuItem
                         key={item.key}
-                        onClick={() => setActiveView(item.key as any)}
+                        onClick={() => setActiveView(item.key)}
                         className="flex items-center space-x-2 cursor-pointer"
                       >
                         <item.icon className="h-4 w-4" />
@@ -153,16 +211,89 @@ const Index = () => {
           </div>
         </header>
 
-        {/* Main Content */}
-        <main className="container mx-auto px-4 py-6">
+        {/* Mobile View Indicator & Navigation */}
+        {isMobile && (
+          <div className="sticky top-[73px] z-30 bg-card/95 backdrop-blur-sm border-b px-4 py-2">
+            <div className="flex items-center justify-between">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => navigateView('right')}
+                disabled={activeView === 'calendar'}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              
+              <div className="flex gap-2">
+                {viewOrder.map((view) => (
+                  <button
+                    key={view}
+                    onClick={() => setActiveView(view)}
+                    className={cn(
+                      "h-2 w-2 rounded-full transition-all",
+                      activeView === view 
+                        ? "bg-primary w-6" 
+                        : "bg-muted-foreground/30"
+                    )}
+                  />
+                ))}
+              </div>
+              
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => navigateView('left')}
+                disabled={activeView === 'analytics'}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            {/* Current view label */}
+            <div className="text-center mt-1">
+              <span className="text-xs font-medium text-muted-foreground">
+                {navigationItems.find(item => item.key === activeView)?.label}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Gesture Hint Overlay */}
+        {showGestureHint && isMobile && (
+          <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-8">
+            <div className="bg-card rounded-2xl p-6 max-w-xs text-center animate-in fade-in zoom-in duration-300">
+              <div className="text-4xl mb-4">👆</div>
+              <h3 className="text-lg font-semibold mb-2">Swipe to Navigate</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Swipe left/right to switch between Calendar, Schedule, and Analytics.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Tap any date to see its schedule
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Main Content with swipe support on mobile */}
+        <main 
+          className="container mx-auto px-4 py-6"
+          {...(isMobile ? swipeHandlers : {})}
+        >
           {renderActiveView()}
         </main>
 
-        {/* Android Install Prompt */}
+        {/* Install Prompt */}
         <InstallPrompt />
         
         {/* Ongoing Task Banner - Shows when Pomodoro is minimized */}
         <OngoingTaskBanner />
+
+        {/* Platform Download Dialog */}
+        {showDownloadDialog && (
+          <PlatformDownloadDialog onClose={() => setShowDownloadDialog(false)} />
+        )}
       </div>
     </PomodoroProvider>
   );

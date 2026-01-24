@@ -65,7 +65,16 @@ const AnalyticsDashboard = () => {
     filteredTasks.forEach(task => {
       const [startHour, startMin] = task.startTime.split(':').map(Number);
       const [endHour, endMin] = task.endTime.split(':').map(Number);
-      const minutes = (endHour * 60 + endMin) - (startHour * 60 + startMin);
+      
+      let startMinutes = startHour * 60 + startMin;
+      let endMinutes = endHour * 60 + endMin;
+      
+      // Handle overnight tasks (end time < start time means next day)
+      if (endMinutes < startMinutes) {
+        endMinutes += 24 * 60; // Add 24 hours
+      }
+      
+      const minutes = endMinutes - startMinutes;
 
       stats[task.category].total++;
       stats[task.category].minutes += minutes;
