@@ -1,73 +1,179 @@
-# Welcome to your Lovable project
+LifeTrack 365 – Life Horizon Tracker
 
-## Project info
+🔗 Live App: https://life-track-365.lovable.app/
 
-**URL**: https://lovable.dev/projects/d172aa56-407a-46c3-b3cc-415e01b67bfe
+LifeTrack 365 is a personal life organization and productivity system designed to help users plan their days, manage schedules, analyze patterns, and gradually take control of their time and life — all with a clean, offline-friendly experience.
 
-## How can I edit this code?
+Built with a long-term vision: tasks → expenses → families → AI insights
 
-There are several ways of editing your application.
+Current Status (Implemented)
 
-**Use Lovable**
+✅ Web / macOS (Browser-based install)
+✅ Local-first data storage
+✅ Calendar & daily scheduling system
+🚧 Expenses (upcoming)
+🚧 Group & family features (upcoming)
+🚧 AI-powered insights (planned)
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/d172aa56-407a-46c3-b3cc-415e01b67bfe) and start prompting.
+What’s Implemented Now
+1. Calendar View
 
-Changes made via Lovable will be committed automatically to this repo.
+Monthly calendar layout
 
-**Use your preferred IDE**
+Day selection with visual focus
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+Navigation between months
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+Designed to act as the backbone for tasks, events, and future expenses
 
-Follow these steps:
+2. Daily Schedule
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+Hour-by-hour daily timeline
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+Clear separation of past vs future time
 
-# Step 3: Install the necessary dependencies.
-npm i
+Tasks can only be added to valid future time slots
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+Shows:
 
-**Edit a file directly in GitHub**
+Current server time
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Remaining time for the day
 
-**Use GitHub Codespaces**
+Designed for realistic time planning, not just todo lists
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+3. Analytics (Foundation)
 
-## What technologies are used for this project?
+Dedicated analytics section
 
-This project is built with:
+UI prepared for:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Productivity insights
 
-## How can I deploy this project?
+Time usage trends
 
-Simply open [Lovable](https://lovable.dev/projects/d172aa56-407a-46c3-b3cc-415e01b67bfe) and click on Share -> Publish.
+Future expense analytics
 
-## Can I connect a custom domain to my Lovable project?
+Currently serves as a structural base for advanced data visualization
 
-Yes, you can!
+4. Multi-Platform Availability
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+Installable on:
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+macOS
+
+Windows
+
+Linux
+
+Android
+
+iOS (PWA-style)
+
+Data stored locally on device for:
+
+Privacy
+
+Offline access
+
+5. Offline-First Philosophy
+
+App works without internet
+
+No forced sign-in
+
+No dependency on cloud to function
+
+Built with privacy and reliability in mind
+
+Upcoming Features (Planned)
+Expenses Module
+
+Daily expense tracking
+
+Category-based spending
+
+Automatic daily totals
+
+Monthly & yearly insights
+
+Group / Family Features
+
+Family or group-based tracking
+
+Shared expenses & schedules
+
+Member-wise insights
+
+Secure invite & approval system
+
+AI-Powered Insights
+
+Smart productivity suggestions
+
+Spending pattern detection
+
+Time optimization recommendations
+
+“Where did my time/money go?” insights
+
+Working with AI on LifeTrack 365 is not about automation —
+it’s about clarity, awareness, and better decisions.
+
+Tech Stack
+
+Frontend
+
+React
+
+Tailwind CSS
+
+Lovable.dev platform
+
+Storage
+
+Local device storage (offline-first)
+
+Backend
+
+Not connected yet (planned: Supabase)
+
+Vision
+
+LifeTrack 365 is being built as a long-term life operating system, not just another productivity app.
+
+Goals:
+
+Minimal but powerful
+
+Offline by default
+
+Honest time tracking
+
+Human-centric analytics
+
+Scales from one person → families → communities
+
+Roadmap
+
+✅ Calendar & daily schedule
+
+✅ Offline-first base
+
+🚧 Expenses system
+
+🚧 Group & family support
+
+🚧 Cloud sync (Supabase)
+
+🚧 AI analytics & insights
+
+🚧 Mobile-first experience
+
+Author
+
+Gurram Venkata Sai Rehan
+
+License
+
+MIT License
