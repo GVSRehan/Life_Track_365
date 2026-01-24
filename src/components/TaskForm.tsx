@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +13,7 @@ import {
 import { useForm } from 'react-hook-form';
 import { Task, TaskCategory, TASK_CATEGORIES } from '@/types/task';
 import { cn } from '@/lib/utils';
+import { Moon } from 'lucide-react';
 
 interface TaskFormProps {
   task?: Task | null;
@@ -48,6 +48,14 @@ const addMinutesToHHMM = (time: string, minutes: number) => {
   return `${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
 };
 
+// Check if end time is before start time (crosses midnight)
+const isOvernightTask = (startTime: string, endTime: string): boolean => {
+  return endTime < startTime;
+};
+
+// Categories that commonly span overnight
+const OVERNIGHT_CATEGORIES: TaskCategory[] = ['sleep', 'journey', 'work'];
+
 const TaskForm = ({ task, date, onSave, onCancel, isToday = false, currentTime }: TaskFormProps) => {
   // Use server-synced time for "today" validation when available
   const getCurrentTime = () => {
@@ -74,6 +82,13 @@ const TaskForm = ({ task, date, onSave, onCancel, isToday = false, currentTime }
     }
   });
 
+  const watchStartTime = form.watch('startTime');
+  const watchEndTime = form.watch('endTime');
+  const watchCategory = form.watch('category');
+  
+  // Check if this is an overnight task
+  const isOvernight = isOvernightTask(watchStartTime, watchEndTime);
+
   const onSubmit = (data: FormData) => {
     // Validate that start time is not in the past for today
     if (isToday) {
@@ -87,14 +102,8 @@ const TaskForm = ({ task, date, onSave, onCancel, isToday = false, currentTime }
       }
     }
 
-    // Validate that end time is after start time
-    if (data.endTime <= data.startTime) {
-      form.setError('endTime', {
-        type: 'manual',
-        message: 'End time must be after start time'
-      });
-      return;
-    }
+    // No validation error for overnight tasks - this is now allowed!
+    // End time being before start time means it ends the next day
 
     onSave({
       ...data,
@@ -170,14 +179,7 @@ const TaskForm = ({ task, date, onSave, onCancel, isToday = false, currentTime }
                 control={form.control}
                 name="endTime"
                 rules={{ 
-                  required: 'End time is required',
-                  validate: (value) => {
-                    const startTime = form.getValues('startTime');
-                    if (value <= startTime) {
-                      return 'End time must be after start time';
-                    }
-                    return true;
-                  }
+                  required: 'End time is required'
                 }}
                 render={({ field }) => (
                   <FormItem>
@@ -185,8 +187,7 @@ const TaskForm = ({ task, date, onSave, onCancel, isToday = false, currentTime }
                     <FormControl>
                       <Input 
                         type="time" 
-                        {...field} 
-                        min={form.watch('startTime')}
+                        {...field}
                       />
                     </FormControl>
                     <FormMessage />
@@ -194,6 +195,16 @@ const TaskForm = ({ task, date, onSave, onCancel, isToday = false, currentTime }
                 )}
               />
             </div>
+            
+            {/* Overnight Task Indicator */}
+            {isOvernight && (
+              <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <Moon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <span className="text-sm text-blue-700 dark:text-blue-300 font-medium">
+                  🌙 Overnight task — ends next day
+                </span>
+              </div>
+            )}
 
             <FormField
               control={form.control}
