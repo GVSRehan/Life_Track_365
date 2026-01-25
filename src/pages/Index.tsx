@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, BarChart3, Menu, LogOut, User, Download, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, BarChart3, Menu, LogOut, User, Download, ChevronLeft, ChevronRight, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -15,13 +15,14 @@ import InstallPrompt from '@/components/InstallPrompt';
 import OngoingTaskBanner from '@/components/OngoingTaskBanner';
 import EventsTicker from '@/components/EventsTicker';
 import PlatformDownloadDialog from '@/components/PlatformDownloadDialog';
+import { ExpenseDashboard } from '@/components/expenses';
 import { useAuth } from '@/hooks/useAuth';
 import { PomodoroProvider } from '@/hooks/usePomodoroSession';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 
-type ViewType = 'calendar' | 'scheduler' | 'analytics';
+type ViewType = 'calendar' | 'scheduler' | 'analytics' | 'expenses';
 
 const Index = () => {
   const [activeView, setActiveView] = useState<ViewType>('calendar');
@@ -54,7 +55,7 @@ const Index = () => {
   };
 
   // Navigation order for swipe
-  const viewOrder: ViewType[] = ['calendar', 'scheduler', 'analytics'];
+  const viewOrder: ViewType[] = ['calendar', 'scheduler', 'analytics', 'expenses'];
   
   const navigateView = (direction: 'left' | 'right') => {
     const currentIndex = viewOrder.indexOf(activeView);
@@ -83,7 +84,6 @@ const Index = () => {
         return (
           <div className="space-y-4">
             <CalendarView selectedDate={selectedDate} onDateSelect={handleDateSelect} />
-            {/* Events Ticker below calendar */}
             <EventsTicker />
           </div>
         );
@@ -91,6 +91,8 @@ const Index = () => {
         return <DayScheduler selectedDate={selectedDate} />;
       case 'analytics':
         return <AnalyticsDashboard />;
+      case 'expenses':
+        return <ExpenseDashboard />;
       default:
         return <CalendarView selectedDate={selectedDate} onDateSelect={handleDateSelect} />;
     }
@@ -98,8 +100,9 @@ const Index = () => {
 
   const navigationItems = [
     { key: 'calendar' as ViewType, label: 'Calendar', icon: Calendar },
-    { key: 'scheduler' as ViewType, label: 'Daily Schedule', icon: Clock },
+    { key: 'scheduler' as ViewType, label: 'Schedule', icon: Clock },
     { key: 'analytics' as ViewType, label: 'Analytics', icon: BarChart3 },
+    { key: 'expenses' as ViewType, label: 'Expenses', icon: Wallet },
   ];
 
   const handleSignOut = async () => {
