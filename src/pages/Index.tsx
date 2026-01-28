@@ -83,7 +83,15 @@ const Index = () => {
       case 'calendar':
         return (
           <div className="space-y-4">
-            <CalendarView selectedDate={selectedDate} onDateSelect={handleDateSelect} />
+            <CalendarView 
+              selectedDate={selectedDate} 
+              onDateSelect={handleDateSelect}
+              onNavigateToSchedule={(date) => {
+                setSelectedDate(date);
+                setActiveView('scheduler');
+              }}
+              onNavigateToExpenses={() => setActiveView('expenses')}
+            />
             <EventsTicker />
           </div>
         );
@@ -94,7 +102,17 @@ const Index = () => {
       case 'expenses':
         return <ExpenseDashboard />;
       default:
-        return <CalendarView selectedDate={selectedDate} onDateSelect={handleDateSelect} />;
+        return (
+          <CalendarView 
+            selectedDate={selectedDate} 
+            onDateSelect={handleDateSelect}
+            onNavigateToSchedule={(date) => {
+              setSelectedDate(date);
+              setActiveView('scheduler');
+            }}
+            onNavigateToExpenses={() => setActiveView('expenses')}
+          />
+        );
     }
   };
 
