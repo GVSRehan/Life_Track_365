@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,28 +8,41 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, ArrowLeft } from 'lucide-react';
+import { Calendar, ArrowLeft, Mail } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 
+type AuthView = 'main' | 'otp' | 'forgot-password' | 'reset-password';
+
 const Auth = () => {
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showOtpVerification, setShowOtpVerification] = useState(false);
+  const [authView, setAuthView] = useState<AuthView>('main');
   const [pendingEmail, setPendingEmail] = useState('');
   const [pendingPassword, setPendingPassword] = useState('');
   const [pendingFullName, setPendingFullName] = useState('');
-  const { signIn, signUp, verifyOtp, user } = useAuth();
+  const { signIn, signUp, verifyOtp, resetPassword, updatePassword, user, session } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // Check if user came from password reset link
   useEffect(() => {
-    if (user) {
+    const isReset = searchParams.get('reset') === 'true';
+    if (isReset && session) {
+      setAuthView('reset-password');
+    }
+  }, [searchParams, session]);
+
+  useEffect(() => {
+    // Don't redirect if user is resetting password
+    if (user && authView !== 'reset-password') {
       navigate('/');
     }
-  }, [user, navigate]);
+  }, [user, navigate, authView]);
 
   // Standard password login
   const handleSignIn = async (e: React.FormEvent) => {
@@ -81,7 +94,7 @@ const Auth = () => {
       setPendingPassword(password);
       setPendingFullName(fullName);
       setOtp('');
-      setShowOtpVerification(true);
+      setAuthView('otp');
       toast({
         title: 'OTP sent',
         description: 'Check your email for the 6-digit verification code.',
@@ -118,7 +131,7 @@ const Auth = () => {
         title: 'Email verified',
         description: 'Your account is active and your password is set.',
       });
-      setShowOtpVerification(false);
+      setAuthView('main');
       setOtp('');
       navigate('/');
     }
@@ -148,12 +161,90 @@ const Auth = () => {
     setLoading(false);
   };
 
-  const resetOtpFlow = () => {
-    setShowOtpVerification(false);
+  const resetToMain = () => {
+    setAuthView('main');
     setOtp('');
     setPendingEmail('');
     setPendingPassword('');
     setPendingFullName('');
+    setEmail('');
+    setPassword('');
+    setConfirmPassword('');
+  };
+
+  // Handle forgot password request
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) {
+      toast({
+        title: 'Email required',
+        description: 'Please enter your email address',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    const { error } = await resetPassword(email);
+
+    if (error) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Reset email sent',
+        description: 'Check your email for the password reset link.',
+      });
+      setEmail('');
+    }
+
+    setLoading(false);
+  };
+
+  // Handle password update after reset
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password !== confirmPassword) {
+      toast({
+        title: 'Passwords do not match',
+        description: 'Please ensure both passwords are the same',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (password.length < 6) {
+      toast({
+        title: 'Password too short',
+        description: 'Password must be at least 6 characters',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    const { error } = await updatePassword(password);
+
+    if (error) {
+      toast({
+        title: 'Error updating password',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Password updated',
+        description: 'Your password has been reset successfully.',
+      });
+      navigate('/');
+    }
+
+    setLoading(false);
   };
 
   return (
@@ -164,8 +255,95 @@ const Auth = () => {
           <h1 className="text-2xl font-bold">LifeTrack 365</h1>
         </div>
         
+        {/* Reset Password Screen (after clicking reset link) */}
+        {authView === 'reset-password' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Set New Password</CardTitle>
+              <CardDescription>
+                Enter your new password below
+              </CardDescription>
+            </CardHeader>
+            <form onSubmit={handleUpdatePassword}>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">New Password</Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    placeholder="Enter new password (min 6 characters)"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={6}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password">Confirm Password</Label>
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    placeholder="Confirm new password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    minLength={6}
+                  />
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? 'Updating...' : 'Update Password'}
+                </Button>
+              </CardFooter>
+            </form>
+          </Card>
+        )}
+
+        {/* Forgot Password Screen */}
+        {authView === 'forgot-password' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Reset Password</CardTitle>
+              <CardDescription>
+                Enter your email and we'll send you a reset link
+              </CardDescription>
+            </CardHeader>
+            <form onSubmit={handleForgotPassword}>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="reset-email">Email</Label>
+                  <Input
+                    id="reset-email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+              </CardContent>
+              <CardFooter className="flex flex-col gap-3">
+                <Button type="submit" className="w-full" disabled={loading}>
+                  <Mail className="h-4 w-4 mr-2" />
+                  {loading ? 'Sending...' : 'Send Reset Link'}
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={resetToMain}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Sign In
+                </Button>
+              </CardFooter>
+            </form>
+          </Card>
+        )}
+
         {/* OTP Verification Screen (after signup) */}
-        {showOtpVerification ? (
+        {authView === 'otp' && (
           <Card>
             <CardHeader>
               <CardTitle>Verify Your Email</CardTitle>
@@ -207,7 +385,7 @@ const Auth = () => {
                     type="button" 
                     variant="outline" 
                     className="flex-1"
-                    onClick={resetOtpFlow}
+                    onClick={resetToMain}
                   >
                     <ArrowLeft className="h-4 w-4 mr-2" />
                     Back
@@ -225,7 +403,10 @@ const Auth = () => {
               </CardFooter>
             </form>
           </Card>
-        ) : (
+        )}
+
+        {/* Main Auth Screen */}
+        {authView === 'main' && (
           <Tabs defaultValue="signin" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="signin">Sign In</TabsTrigger>
@@ -266,9 +447,17 @@ const Auth = () => {
                       />
                     </div>
                   </CardContent>
-                  <CardFooter>
+                  <CardFooter className="flex flex-col gap-3">
                     <Button type="submit" className="w-full" disabled={loading}>
                       {loading ? 'Signing in...' : 'Sign In'}
+                    </Button>
+                    <Button 
+                      type="button" 
+                      variant="link" 
+                      className="text-sm text-muted-foreground"
+                      onClick={() => setAuthView('forgot-password')}
+                    >
+                      Forgot your password?
                     </Button>
                   </CardFooter>
                 </form>
