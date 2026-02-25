@@ -74,13 +74,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Verify emailed OTP, then set password for future email+password logins
   const verifyOtp = async (email: string, token: string, password?: string) => {
-    const { error: verifyError } = await supabase.auth.verifyOtp({
+    // Primary: use 'email' type matching signInWithOtp flow
+    let { error: verifyError } = await supabase.auth.verifyOtp({
       email,
       token,
-      type: 'signup', // Use 'signup' type for new user OTP verification
+      type: 'email',
     });
 
-    if (verifyError) return { error: verifyError };
+    // Fallback: try 'signup' type for older pending verifications
+    if (verifyError) {
+      const fallback = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type: 'signup',
+      });
+      if (fallback.error) return { error: verifyError }; // return original error
+      verifyError = null;
+    }
 
     if (password) {
       const { error: passwordError } = await supabase.auth.updateUser({ password });
