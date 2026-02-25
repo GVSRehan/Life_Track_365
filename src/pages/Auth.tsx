@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, ArrowLeft, Mail } from 'lucide-react';
+import { Calendar, ArrowLeft, Mail, AlertCircle } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 
 type AuthView = 'main' | 'otp' | 'forgot-password' | 'reset-password';
@@ -26,6 +26,7 @@ const Auth = () => {
   const [pendingEmail, setPendingEmail] = useState('');
   const [pendingPassword, setPendingPassword] = useState('');
   const [pendingFullName, setPendingFullName] = useState('');
+  const [inlineError, setInlineError] = useState('');
   const { signIn, signUp, verifyOtp, resetPassword, updatePassword, user, session } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -39,127 +40,118 @@ const Auth = () => {
   }, [searchParams, session]);
 
   useEffect(() => {
-    // Don't redirect if user is resetting password
     if (user && authView !== 'reset-password') {
       navigate('/');
     }
   }, [user, navigate, authView]);
 
-  // Standard password login
+  // Clear inline error when user edits inputs
+  useEffect(() => {
+    setInlineError('');
+  }, [email, password, fullName]);
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setInlineError('');
 
-    const { error } = await signIn(email, password);
+    try {
+      const { error } = await signIn(email, password);
 
-    if (error) {
-      toast({
-        title: 'Error signing in',
-        description: error.message,
-        variant: 'destructive',
-      });
-    } else {
-      toast({
-        title: 'Success',
-        description: 'Signed in successfully!',
-      });
+      if (error) {
+        const isInvalidCreds = error.message?.toLowerCase().includes('invalid') ||
+          error.message?.toLowerCase().includes('credentials');
+        
+        if (isInvalidCreds) {
+          setInlineError('Invalid email or password. Try resetting your password if you forgot it.');
+        } else {
+          toast({
+            title: 'Error signing in',
+            description: error.message,
+            variant: 'destructive',
+          });
+        }
+      } else {
+        toast({ title: 'Success', description: 'Signed in successfully!' });
+      }
+    } catch {
+      toast({ title: 'Error', description: 'Network error. Please try again.', variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
-  // Sign up by emailing OTP, then verify OTP to activate + set password
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password.trim() || !fullName.trim()) {
-      toast({
-        title: 'Missing fields',
-        description: 'Please fill in all fields',
-        variant: 'destructive',
-      });
+      toast({ title: 'Missing fields', description: 'Please fill in all fields', variant: 'destructive' });
       return;
     }
 
     setLoading(true);
+    setInlineError('');
 
-    const { error } = await signUp(email, password, fullName);
+    try {
+      const { error } = await signUp(email, password, fullName);
 
-    if (error) {
-      toast({
-        title: 'Error signing up',
-        description: error.message,
-        variant: 'destructive',
-      });
-    } else {
-      setPendingEmail(email);
-      setPendingPassword(password);
-      setPendingFullName(fullName);
-      setOtp('');
-      setAuthView('otp');
-      toast({
-        title: 'OTP sent',
-        description: 'Check your email for the 6-digit verification code.',
-      });
+      if (error) {
+        toast({ title: 'Error signing up', description: error.message, variant: 'destructive' });
+      } else {
+        setPendingEmail(email);
+        setPendingPassword(password);
+        setPendingFullName(fullName);
+        setOtp('');
+        setAuthView('otp');
+        toast({ title: 'OTP sent', description: 'Check your email for the 6-digit verification code.' });
+      }
+    } catch {
+      toast({ title: 'Error', description: 'Network error. Please try again.', variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
-  // Verify OTP after signup (and set password)
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (otp.length !== 6) {
-      toast({
-        title: 'Invalid OTP',
-        description: 'Please enter the complete 6-digit code',
-        variant: 'destructive',
-      });
+      toast({ title: 'Invalid OTP', description: 'Please enter the complete 6-digit code', variant: 'destructive' });
       return;
     }
 
     setLoading(true);
 
-    const { error } = await verifyOtp(pendingEmail, otp, pendingPassword);
+    try {
+      const { error } = await verifyOtp(pendingEmail, otp, pendingPassword);
 
-    if (error) {
-      toast({
-        title: 'Error verifying OTP',
-        description: error.message,
-        variant: 'destructive',
-      });
-    } else {
-      toast({
-        title: 'Email verified',
-        description: 'Your account is active and your password is set.',
-      });
-      setAuthView('main');
-      setOtp('');
-      navigate('/');
+      if (error) {
+        toast({ title: 'Error verifying OTP', description: error.message, variant: 'destructive' });
+      } else {
+        toast({ title: 'Email verified', description: 'Your account is active and your password is set.' });
+        setAuthView('main');
+        setOtp('');
+        navigate('/');
+      }
+    } catch {
+      toast({ title: 'Error', description: 'Network error. Please try again.', variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
-  // Resend OTP for signup verification
   const handleResendOtp = async () => {
     setLoading(true);
-
-    const { error } = await signUp(pendingEmail, pendingPassword, pendingFullName);
-
-    if (error) {
-      toast({
-        title: 'Error resending OTP',
-        description: error.message,
-        variant: 'destructive',
-      });
-    } else {
-      toast({
-        title: 'OTP resent',
-        description: 'Check your email for the new 6-digit code.',
-      });
+    try {
+      const { error } = await signUp(pendingEmail, pendingPassword, pendingFullName);
+      if (error) {
+        toast({ title: 'Error resending OTP', description: error.message, variant: 'destructive' });
+      } else {
+        toast({ title: 'OTP resent', description: 'Check your email for the new 6-digit code.' });
+      }
+    } catch {
+      toast({ title: 'Error', description: 'Network error. Please try again.', variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const resetToMain = () => {
@@ -171,81 +163,64 @@ const Auth = () => {
     setEmail('');
     setPassword('');
     setConfirmPassword('');
+    setInlineError('');
   };
 
-  // Handle forgot password request
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) {
-      toast({
-        title: 'Email required',
-        description: 'Please enter your email address',
-        variant: 'destructive',
-      });
+      toast({ title: 'Email required', description: 'Please enter your email address', variant: 'destructive' });
       return;
     }
 
     setLoading(true);
 
-    const { error } = await resetPassword(email);
-
-    if (error) {
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
-      });
-    } else {
-      toast({
-        title: 'Reset email sent',
-        description: 'Check your email for the password reset link.',
-      });
-      setEmail('');
+    try {
+      const { error } = await resetPassword(email);
+      if (error) {
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      } else {
+        toast({ title: 'Reset email sent', description: 'Check your email for the password reset link.' });
+        setEmail('');
+      }
+    } catch {
+      toast({ title: 'Error', description: 'Network error. Please try again.', variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
-  // Handle password update after reset
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
-      toast({
-        title: 'Passwords do not match',
-        description: 'Please ensure both passwords are the same',
-        variant: 'destructive',
-      });
+      toast({ title: 'Passwords do not match', description: 'Please ensure both passwords are the same', variant: 'destructive' });
       return;
     }
-
     if (password.length < 6) {
-      toast({
-        title: 'Password too short',
-        description: 'Password must be at least 6 characters',
-        variant: 'destructive',
-      });
+      toast({ title: 'Password too short', description: 'Password must be at least 6 characters', variant: 'destructive' });
       return;
     }
 
     setLoading(true);
 
-    const { error } = await updatePassword(password);
-
-    if (error) {
-      toast({
-        title: 'Error updating password',
-        description: error.message,
-        variant: 'destructive',
-      });
-    } else {
-      toast({
-        title: 'Password updated',
-        description: 'Your password has been reset successfully.',
-      });
-      navigate('/');
+    try {
+      const { error } = await updatePassword(password);
+      if (error) {
+        toast({ title: 'Error updating password', description: error.message, variant: 'destructive' });
+      } else {
+        toast({ title: 'Password updated', description: 'Your password has been reset successfully.' });
+        navigate('/');
+      }
+    } catch {
+      toast({ title: 'Error', description: 'Network error. Please try again.', variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
+  };
 
-    setLoading(false);
+  const goToForgotPassword = () => {
+    setInlineError('');
+    setAuthView('forgot-password');
   };
 
   return (
@@ -256,38 +231,22 @@ const Auth = () => {
           <h1 className="text-2xl font-bold">LifeTrack 365</h1>
         </div>
         
-        {/* Reset Password Screen (after clicking reset link) */}
+        {/* Reset Password Screen */}
         {authView === 'reset-password' && (
           <Card>
             <CardHeader>
               <CardTitle>Set New Password</CardTitle>
-              <CardDescription>
-                Enter your new password below
-              </CardDescription>
+              <CardDescription>Enter your new password below</CardDescription>
             </CardHeader>
             <form onSubmit={handleUpdatePassword}>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="new-password">New Password</Label>
-                  <PasswordInput
-                    id="new-password"
-                    placeholder="Enter new password (min 6 characters)"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={6}
-                  />
+                  <PasswordInput id="new-password" placeholder="Enter new password (min 6 characters)" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} autoComplete="new-password" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="confirm-password">Confirm Password</Label>
-                  <PasswordInput
-                    id="confirm-password"
-                    placeholder="Confirm new password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                    minLength={6}
-                  />
+                  <PasswordInput id="confirm-password" placeholder="Confirm new password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required minLength={6} autoComplete="new-password" />
                 </div>
               </CardContent>
               <CardFooter>
@@ -304,22 +263,13 @@ const Auth = () => {
           <Card>
             <CardHeader>
               <CardTitle>Reset Password</CardTitle>
-              <CardDescription>
-                Enter your email and we'll send you a reset link
-              </CardDescription>
+              <CardDescription>Enter your email and we'll send you a reset link</CardDescription>
             </CardHeader>
             <form onSubmit={handleForgotPassword}>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="reset-email">Email</Label>
-                  <Input
-                    id="reset-email"
-                    type="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
+                  <Input id="reset-email" type="email" placeholder="Enter your email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
                 </div>
               </CardContent>
               <CardFooter className="flex flex-col gap-3">
@@ -327,12 +277,7 @@ const Auth = () => {
                   <Mail className="h-4 w-4 mr-2" />
                   {loading ? 'Sending...' : 'Send Reset Link'}
                 </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={resetToMain}
-                >
+                <Button type="button" variant="outline" className="w-full" onClick={resetToMain}>
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back to Sign In
                 </Button>
@@ -341,14 +286,12 @@ const Auth = () => {
           </Card>
         )}
 
-        {/* OTP Verification Screen (after signup) */}
+        {/* OTP Verification Screen */}
         {authView === 'otp' && (
           <Card>
             <CardHeader>
               <CardTitle>Verify Your Email</CardTitle>
-              <CardDescription>
-                Enter the 6-digit code sent to your email
-              </CardDescription>
+              <CardDescription>Enter the 6-digit code sent to your email</CardDescription>
             </CardHeader>
             <form onSubmit={handleVerifyOtp}>
               <CardContent className="space-y-4">
@@ -358,11 +301,7 @@ const Auth = () => {
                 <div className="space-y-2">
                   <Label htmlFor="otp-code">Enter OTP Code</Label>
                   <div className="flex justify-center py-4">
-                    <InputOTP
-                      maxLength={6}
-                      value={otp}
-                      onChange={(value) => setOtp(value)}
-                    >
+                    <InputOTP maxLength={6} value={otp} onChange={(value) => setOtp(value)}>
                       <InputOTPGroup>
                         <InputOTPSlot index={0} />
                         <InputOTPSlot index={1} />
@@ -380,22 +319,11 @@ const Auth = () => {
                   {loading ? 'Verifying...' : 'Verify Email'}
                 </Button>
                 <div className="flex gap-2 w-full">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    className="flex-1"
-                    onClick={resetToMain}
-                  >
+                  <Button type="button" variant="outline" className="flex-1" onClick={resetToMain}>
                     <ArrowLeft className="h-4 w-4 mr-2" />
                     Back
                   </Button>
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
-                    className="flex-1"
-                    onClick={handleResendOtp}
-                    disabled={loading}
-                  >
+                  <Button type="button" variant="ghost" className="flex-1" onClick={handleResendOtp} disabled={loading}>
                     Resend OTP
                   </Button>
                 </div>
@@ -412,49 +340,39 @@ const Auth = () => {
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
             </TabsList>
             
-            {/* Sign In Tab - Password only */}
             <TabsContent value="signin">
               <Card>
                 <CardHeader>
                   <CardTitle>Sign In</CardTitle>
-                  <CardDescription>
-                    Enter your credentials to access your account
-                  </CardDescription>
+                  <CardDescription>Enter your credentials to access your account</CardDescription>
                 </CardHeader>
                 <form onSubmit={handleSignIn}>
                   <CardContent className="space-y-4">
+                    {inlineError && (
+                      <div className="flex items-start gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+                        <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                        <div>
+                          <p>{inlineError}</p>
+                          <Button type="button" variant="link" className="h-auto p-0 text-destructive underline text-sm" onClick={goToForgotPassword}>
+                            Reset password →
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <Label htmlFor="signin-email">Email</Label>
-                      <Input
-                        id="signin-email"
-                        type="email"
-                        placeholder="Enter your email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                      />
+                      <Input id="signin-email" type="email" placeholder="Enter your email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="signin-password">Password</Label>
-                      <PasswordInput
-                        id="signin-password"
-                        placeholder="Enter your password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                      />
+                      <PasswordInput id="signin-password" placeholder="Enter your password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
                     </div>
                   </CardContent>
                   <CardFooter className="flex flex-col gap-3">
                     <Button type="submit" className="w-full" disabled={loading}>
                       {loading ? 'Signing in...' : 'Sign In'}
                     </Button>
-                    <Button 
-                      type="button" 
-                      variant="link" 
-                      className="text-sm text-muted-foreground"
-                      onClick={() => setAuthView('forgot-password')}
-                    >
+                    <Button type="button" variant="link" className="text-sm text-muted-foreground" onClick={goToForgotPassword}>
                       Forgot your password?
                     </Button>
                   </CardFooter>
@@ -462,49 +380,25 @@ const Auth = () => {
               </Card>
             </TabsContent>
             
-            {/* Sign Up Tab - With OTP email verification */}
             <TabsContent value="signup">
               <Card>
                 <CardHeader>
                   <CardTitle>Sign Up</CardTitle>
-                  <CardDescription>
-                    Create a new account (we'll email a 6-digit OTP to verify you)
-                  </CardDescription>
+                  <CardDescription>Create a new account (we'll email a 6-digit OTP to verify you)</CardDescription>
                 </CardHeader>
                 <form onSubmit={handleSignUp}>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="signup-name">Full Name</Label>
-                      <Input
-                        id="signup-name"
-                        type="text"
-                        placeholder="Enter your full name"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        required
-                      />
+                      <Input id="signup-name" type="text" placeholder="Enter your full name" value={fullName} onChange={(e) => setFullName(e.target.value)} required autoComplete="name" />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="signup-email">Email</Label>
-                      <Input
-                        id="signup-email"
-                        type="email"
-                        placeholder="Enter your email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                      />
+                      <Input id="signup-email" type="email" placeholder="Enter your email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="signup-password">Password</Label>
-                      <PasswordInput
-                        id="signup-password"
-                        placeholder="Create a password (min 6 characters)"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        minLength={6}
-                      />
+                      <PasswordInput id="signup-password" placeholder="Create a password (min 6 characters)" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} autoComplete="new-password" />
                     </div>
                   </CardContent>
                   <CardFooter>
