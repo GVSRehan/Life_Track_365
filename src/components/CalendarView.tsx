@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, CalendarDays, Wallet } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { TASK_CATEGORIES, Task } from '@/types/task';
@@ -10,39 +10,13 @@ import { useEvents } from '@/hooks/useEvents';
 interface CalendarViewProps {
   selectedDate: Date;
   onDateSelect: (date: Date) => void;
-  onNavigateToSchedule?: (date: Date) => void;
-  onNavigateToExpenses?: () => void;
 }
 
-const CalendarView = ({ selectedDate, onDateSelect, onNavigateToSchedule, onNavigateToExpenses }: CalendarViewProps) => {
+const CalendarView = ({ selectedDate, onDateSelect }: CalendarViewProps) => {
   const [currentDate, setCurrentDate] = useState(new Date(selectedDate));
-  const [showQuickActions, setShowQuickActions] = useState<Date | null>(null);
   const { currentDateTime } = useServerTime();
   const { getEventsForDate } = useEvents();
 
-  const handleDateClick = (date: Date) => {
-    if (showQuickActions?.toDateString() === date.toDateString()) {
-      // Second tap - navigate to schedule
-      if (onNavigateToSchedule) {
-        onNavigateToSchedule(date);
-      }
-      setShowQuickActions(null);
-    } else {
-      // First tap - show quick actions and select date
-      onDateSelect(date);
-      setShowQuickActions(date);
-    }
-  };
-
-  const handleQuickAction = (action: 'schedule' | 'expenses', date: Date, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (action === 'schedule' && onNavigateToSchedule) {
-      onNavigateToSchedule(date);
-    } else if (action === 'expenses' && onNavigateToExpenses) {
-      onNavigateToExpenses();
-    }
-    setShowQuickActions(null);
-  };
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
@@ -174,7 +148,7 @@ const CalendarView = ({ selectedDate, onDateSelect, onNavigateToSchedule, onNavi
                   hasEvents && "ring-1 ring-amber-400/50",
                   !hasActiveTasks && !hasEvents && "hover:bg-accent/50"
                 )}
-                onClick={() => handleDateClick(date)}
+                onClick={() => onDateSelect(date)}
               >
                 <div className="flex flex-col h-full">
                   <span className={cn(
@@ -193,12 +167,12 @@ const CalendarView = ({ selectedDate, onDateSelect, onNavigateToSchedule, onNavi
                           key={taskIndex}
                           className={cn(
                             "w-2 h-2 rounded-full",
-                            category.color === 'text-blue-700' && "bg-primary",
+                            category.color === 'text-blue-700' && "bg-blue-500",
                             category.color === 'text-purple-700' && "bg-purple-500",
                             category.color === 'text-green-700' && "bg-green-500",
                             category.color === 'text-orange-700' && "bg-orange-500",
-                            category.color === 'text-red-700' && "bg-destructive",
-                            category.color === 'text-gray-700' && "bg-muted-foreground",
+                            category.color === 'text-red-700' && "bg-red-500",
+                            category.color === 'text-gray-700' && "bg-gray-500",
                             category.color === 'text-amber-700' && "bg-amber-500"
                           )}
                         />
@@ -211,30 +185,8 @@ const CalendarView = ({ selectedDate, onDateSelect, onNavigateToSchedule, onNavi
                     )}
                   </div>
                   
-                  {/* Mobile: Quick action icons when date is selected */}
-                  {showQuickActions?.toDateString() === date.toDateString() && (
-                    <div className="sm:hidden absolute inset-0 bg-background/95 rounded-md flex items-center justify-center gap-2 z-10">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={(e) => handleQuickAction('schedule', date, e)}
-                      >
-                        <CalendarDays className="h-4 w-4 text-primary" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={(e) => handleQuickAction('expenses', date, e)}
-                      >
-                        <Wallet className="h-4 w-4 text-primary" />
-                      </Button>
-                    </div>
-                  )}
-                  
                   {/* Mobile: Simple task count indicator */}
-                  {hasActiveTasks && showQuickActions?.toDateString() !== date.toDateString() && (
+                  {hasActiveTasks && (
                     <div className="sm:hidden mt-auto">
                       <div className="w-1.5 h-1.5 rounded-full bg-primary mx-auto" />
                     </div>
