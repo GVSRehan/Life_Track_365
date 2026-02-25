@@ -35,21 +35,12 @@ const TaskBlock = ({ task, onEdit, onDelete, disabled = false, canEdit, canDelet
     setIsCompleted(newStatus === 1);
   };
   
-  // Check if this is an overnight task (end time < start time)
-  const isOvernight = task.endTime < task.startTime;
-  
   const calculateDuration = () => {
     const [startHour, startMinute] = task.startTime.split(':').map(Number);
     const [endHour, endMinute] = task.endTime.split(':').map(Number);
     
     const startMinutes = startHour * 60 + startMinute;
-    let endMinutes = endHour * 60 + endMinute;
-    
-    // If overnight task, add 24 hours (1440 minutes) to end time
-    if (isOvernight) {
-      endMinutes += 24 * 60;
-    }
-    
+    const endMinutes = endHour * 60 + endMinute;
     const duration = endMinutes - startMinutes;
     
     const hours = Math.floor(duration / 60);
@@ -104,14 +95,7 @@ const TaskBlock = ({ task, onEdit, onDelete, disabled = false, canEdit, canDelet
             {task.title}
           </h4>
           <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
-            <span className="flex items-center gap-1">
-              {task.startTime} - {task.endTime}
-              {isOvernight && (
-                <span className="text-blue-600 dark:text-blue-400 text-[10px] sm:text-xs font-medium ml-1">
-                  🌙 +1 day
-                </span>
-              )}
-            </span>
+            <span>{task.startTime} - {task.endTime}</span>
             <span className="hidden sm:inline">({calculateDuration()})</span>
           </div>
           {(task.acknowledged || isCompleted) && (
